@@ -3,280 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Dashboard</title>
+    <title>Student Attendance Portal</title>
     <style>
         :root {
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --primary: #4f46e5;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --success: #10b981;
-            --danger: #ef4444;
+            --bg: #090d16;
+            --surface: #111827;
+            --surface-hover: #1f2937;
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --border: #1f2937;
+            --present: #10b981;
+            --absent: #ef4444;
+            --partial: #f59e0b;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--text-main);
+            background-color: var(--bg); color: var(--text); min-height: 100vh;
+            padding: 12px 8px; display: flex; justify-content: center;
         }
 
-        .container {
-            width: 100%;
-            max-width: 420px;
-        }
+        .app-container { width: 100%; max-width: 950px; }
 
-        .card {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
+        #login-view {
+            max-width: 380px; margin: 60px auto; text-align: center;
+            background: var(--surface); padding: 28px 20px;
+            border-radius: 16px; border: 1px solid var(--border);
         }
-
-        /* Login Section Styles */
-        h2 { margin-top: 0; color: var(--primary); text-align: center; }
+        h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+        p.subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
         
-        .input-group { margin-bottom: 15px; }
         input {
-            width: 100%; padding: 14px; box-sizing: border-box;
-            border: 1px solid #e5e7eb; border-radius: 8px;
-            font-size: 16px; transition: border-color 0.2s;
+            width: 100%; padding: 12px 14px; margin-bottom: 14px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 14px; outline: none;
         }
-        input:focus { border-color: var(--primary); outline: none; }
-        
-        button {
-            width: 100%; padding: 14px;
-            background-color: var(--primary); color: white;
-            border: none; border-radius: 8px; font-size: 16px;
-            font-weight: 600; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
-        }
-        button:hover { background-color: #4338ca; }
-        
-        .loader {
-            display: none; text-align: center;
-            margin-top: 15px; font-size: 14px; color: var(--primary);
-            font-weight: 600;
+        input:focus { border-color: var(--primary); }
+
+        button.btn-primary {
+            width: 100%; padding: 12px; background: var(--primary);
+            color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
         }
 
-        /* Dashboard Section Styles */
-        #dashboard-view { display: none; text-align: center; }
-        
-        .student-info { margin-bottom: 30px; }
-        .student-name { font-size: 24px; font-weight: 700; margin: 0; }
-        .roll-badge {
-            display: inline-block; background: #e0e7ff; color: var(--primary);
-            padding: 6px 12px; border-radius: 20px;
-            font-size: 14px; font-weight: 600; margin-top: 10px;
+        .top-badge-wrapper { display: flex; justify-content: center; margin-bottom: 14px; }
+        .roll-semicircle-badge {
+            background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); border-top: none;
+            color: var(--primary-light); padding: 6px 20px 8px 20px;
+            border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+            font-weight: 800; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
         }
 
-        /* Circular Progress Bar */
-        .progress-circle {
-            position: relative; width: 160px; height: 160px;
-            margin: 0 auto 20px;
-        }
-        svg { transform: rotate(-90deg); width: 100%; height: 100%; }
-        circle {
-            fill: none; stroke-width: 12; stroke-linecap: round;
-        }
-        .bg-circle { stroke: #e5e7eb; }
-        .progress {
-            stroke: var(--success);
-            stroke-dasharray: 440; 
-            stroke-dashoffset: 440;
-            transition: stroke-dashoffset 1.5s ease-out, stroke 0.5s ease;
-        }
-        
-        .percentage-text {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 32px; font-weight: 800;
-        }
-        
-        .attendance-label {
-            font-size: 16px; color: var(--text-muted); font-weight: 500;
+        .top-metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px; }
+        .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 4px; text-align: center; }
+        .metric-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .metric-value { font-size: 16px; font-weight: 800; color: var(--text); }
+
+        .dashboard-content-grid { display: flex; flex-direction: column; gap: 16px; }
+
+        .panel-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 14px; }
+        .panel-header {
+            font-size: 15px; font-weight: 700; margin-bottom: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px;
         }
 
-        /* New Stats Row Styles */
-        .stats-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #f3f4f6;
+        .calendar-nav { display: flex; align-items: center; gap: 10px; }
+        .cal-nav-btn {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text);
+            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px;
         }
-        .stat-box {
-            flex: 1;
-            text-align: center;
-        }
-        .stat-value {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .val-present { color: var(--success); }
-        .val-absent { color: var(--danger); }
-        .val-total { color: var(--text-main); }
+        .cal-nav-btn:hover { border-color: var(--primary); }
 
-        .back-btn {
-            background-color: transparent; color: var(--text-muted);
-            box-shadow: none; margin-top: 25px; font-size: 14px;
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .cal-day-name { font-size: 11px; color: var(--text-muted); font-weight: 700; padding-bottom: 6px; }
+        .cal-date {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--bg); font-size: 12px; font-weight: 600;
+            cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
         }
-        .back-btn:hover { background-color: #f3f4f6; color: var(--text-main); }
+        .cal-date:hover { border-color: var(--primary); background: var(--surface-hover); }
+        .status-present { background: rgba(16, 185, 129, 0.22); color: var(--present); font-weight: 800; border-color: rgba(16, 185, 129, 0.3); }
+        .status-absent { background: rgba(239, 68, 68, 0.22); color: var(--absent); font-weight: 800; border-color: rgba(239, 68, 68, 0.3); }
+        .status-partial { background: rgba(245, 158, 11, 0.22); color: var(--partial); font-weight: 800; border-color: rgba(245, 158, 11, 0.3); }
+
+        .subject-scroll-area { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+        .subject-row-strict { display: grid; grid-template-columns: 1.2fr 1fr 48px 45px; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .subj-name-col { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .subj-bar-wrapper { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+        .subj-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+        .subj-pct-badge { font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 6px; text-align: center; }
+        .subj-classes-count { font-size: 11px; color: var(--text-muted); font-weight: 600; text-align: right; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); justify-content: center; align-items: center; padding: 16px; z-index: 100; }
+        .modal-card { background: var(--surface); border: 1px solid var(--border); width: 100%; max-width: 440px; border-radius: 16px; padding: 20px; }
+        .no-record-banner { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--partial); color: var(--partial); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 10px; }
+        .period-list { margin-top: 14px; max-height: 300px; overflow-y: auto; }
+        .period-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+        .badge-p { color: var(--present); font-weight: 800; }
+        .badge-a { color: var(--absent); font-weight: 800; }
+        .badge-tt { color: var(--text-muted); font-weight: 600; font-size: 11px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; }
+
+        .signout-container { display: flex; justify-content: center; margin-top: 16px; }
+        .btn-signout { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 20px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="app-container">
         <!-- LOGIN VIEW -->
-        <div class="card" id="login-view">
+        <div id="login-view">
             <h2>CampX Portal</h2>
-            <div class="input-group">
-                <input type="email" id="loginId" placeholder="College Email ID" required>
-            </div>
-            <div class="input-group">
-                <input type="password" id="password" placeholder="Password" required>
-            </div>
-            <button onclick="fetchAttendance()">View Attendance</button>
-            <div id="loading" class="loader">Logging in & syncing data...</div>
+            <p class="subtitle">Student Attendance Sign In</p>
+            <input type="email" id="loginId" placeholder="College Email ID" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button class="btn-primary" onclick="loginAndFetch()">Sign In</button>
+            <div id="loading" class="loader">Syncing data...</div>
         </div>
 
         <!-- DASHBOARD VIEW -->
-        <div class="card" id="dashboard-view">
-            <div class="student-info">
-                <h3 class="student-name" id="display-name">Student Name</h3>
-                <div class="roll-badge" id="display-roll">Roll No</div>
-            </div>
-
-            <div class="progress-circle">
-                <svg>
-                    <circle class="bg-circle" cx="80" cy="80" r="70"></circle>
-                    <circle class="progress" id="progress-bar" cx="80" cy="80" r="70"></circle>
-                </svg>
-                <div class="percentage-text" id="display-percentage">0%</div>
-            </div>
+        <div id="dashboard-view" style="display: none;">
             
-            <div class="attendance-label">Primary Attendance</div>
+            <div class="top-badge-wrapper">
+                <div class="roll-semicircle-badge" id="disp-roll">ROLL NO</div>
+            </div>
 
-            <!-- New Stats Row -->
-            <div class="stats-container">
-                <div class="stat-box">
-                    <div class="stat-value val-total" id="display-total">0</div>
-                    <div class="stat-label">Total</div>
+            <div class="top-metrics-grid">
+                <div class="metric-card"><div class="metric-label">Final Attd</div><div class="metric-value" id="disp-final" style="color: var(--present);">0%</div></div>
+                <div class="metric-card"><div class="metric-label">Class Avg</div><div class="metric-value" id="disp-avg">0%</div></div>
+                <div class="metric-card"><div class="metric-label">Total</div><div class="metric-value" id="disp-total">0</div></div>
+                <div class="metric-card"><div class="metric-label">Present</div><div class="metric-value" id="disp-present" style="color: var(--present);">0</div></div>
+                <div class="metric-card"><div class="metric-label">Absent</div><div class="metric-value" id="disp-absent" style="color: var(--absent);">0</div></div>
+            </div>
+
+            <div class="dashboard-content-grid">
+                <div class="panel-box">
+                    <div class="panel-header">
+                        <span id="calendar-title">July 2026 Calendar</span>
+                        <div class="calendar-nav">
+                            <button class="cal-nav-btn" onclick="changeMonth(-1)">←</button>
+                            <button class="cal-nav-btn" onclick="changeMonth(1)">→</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-container"></div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value val-present" id="display-present">0</div>
-                    <div class="stat-label">Present</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value val-absent" id="display-absent">0</div>
-                    <div class="stat-label">Absent</div>
+
+                <div class="panel-box">
+                    <div class="panel-header">
+                        <span>Subject Breakdown</span>
+                        <span style="font-size: 11px; color: var(--text-muted);" id="disp-sem-badge">Semester 7</span>
+                    </div>
+                    <div class="subject-scroll-area" id="subject-container"></div>
                 </div>
             </div>
 
-            <button class="back-btn" onclick="logout()">← Check Another Account</button>
+            <div class="signout-container">
+                <button class="btn-signout" onclick="signOut()">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAILY CLASS / TIMETABLE MODAL -->
+    <div class="modal" id="class-modal">
+        <div class="modal-card">
+            <h3 id="modal-date-title" style="font-size: 16px;">Schedule & Attendance Log</h3>
+            <div id="no-record-container"></div>
+            <div class="period-list" id="modal-period-list"></div>
+            <button class="btn-primary" style="margin-top: 14px;" onclick="closeModal()">Close</button>
         </div>
     </div>
 
     <script>
-        async function fetchAttendance() {
-            const loginId = document.getElementById('loginId').value;
-            const password = document.getElementById('password').value;
-            
-            if (!loginId || !password) {
-                alert("Please enter both your email and password.");
-                return;
-            }
+        let cachedCredentials = {};
+        let dailyClassesCache = {};
+        let monthlyCalendarMap = {};
 
+        // Dynamic Student Context Extracted from Login Response
+        let studentContext = { classroomId: "57", semNo: "7" };
+
+        let currentCalendarDate = new Date(2026, 6, 1); // July 2026
+
+        const API_BASE_URL = "https://attendance-temn.onrender.com"; // Update to Render URL when deploying
+        const barColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLoginId = localStorage.getItem('campx_loginId');
+            const savedPassword = localStorage.getItem('campx_password');
+
+            if (savedLoginId && savedPassword) {
+                document.getElementById('loginId').value = savedLoginId;
+                document.getElementById('password').value = savedPassword;
+                loginAndFetch(savedLoginId, savedPassword);
+            }
+        });
+
+        async function loginAndFetch(optLoginId, optPassword) {
+            const loginId = optLoginId || document.getElementById('loginId').value;
+            const password = optPassword || document.getElementById('password').value;
+            if (!loginId || !password) return alert("Please enter credentials");
+
+            cachedCredentials = { loginId, password };
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
+            
             document.getElementById('loading').style.display = "block";
 
             try {
-                const response = await fetch("https://attendance-temn.onrender.com/api/attendance", {
+                const res = await fetch(`${API_BASE_URL}/api/attendance`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ loginId, password })
                 });
 
-                const data = await response.json();
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('campx_loginId', loginId);
+                    localStorage.setItem('campx_password', password);
+                    
+                    // Capture Dynamic Context for this user (branch/classroom/sem)
+                    if (data.dynamicContext) {
+                        studentContext = data.dynamicContext;
+                    }
 
-                if (response.ok) {
-                    processAndDisplayData(data, loginId);
+                    monthlyCalendarMap["2026-07"] = data.monthlyCalendar || {};
+                    renderDashboard(data);
                 } else {
-                    alert("Authentication Failed: Please check your credentials.");
+                    alert("Auth failed: " + data.detail);
+                    signOut();
                 }
-            } catch (error) {
-                alert("Server Error: Make sure your Python backend is running.");
+            } catch (err) {
+                alert("Server connection error.");
             } finally {
                 document.getElementById('loading').style.display = "none";
             }
         }
 
-        function processAndDisplayData(data, loginId) {
-            // 1. Data Extraction
-            const studentInfo = data.student || {};
-            const rollNo = studentInfo.rollNo || loginId.split('@')[0].toUpperCase();
-            const studentName = studentInfo.fullName || "Student";
+        function renderDashboard(data) {
+            const student = data.primary.student || {};
+            document.getElementById('disp-roll').textContent = student.rollNo || "23701A05B8";
+            document.getElementById('disp-sem-badge').textContent = `Semester ${studentContext.semNo}`;
+
+            const overallPct = parseFloat(data.subjectWise.overallAttendance || data.primary.attendancePercentage || 0).toFixed(1);
+            const classAvg = parseFloat(data.subjectWise.classAverage || 0).toFixed(1);
             
-            // Percentage Data
-            const attendance = data.attendancePercentage || (data.primaryAttendance ? data.primaryAttendance.percentage : 0);
+            document.getElementById('disp-final').textContent = overallPct + '%';
+            document.getElementById('disp-avg').textContent = classAvg + '%';
 
-            // Detailed Class Stats Data
-            const totalClasses = data.primaryAttendance ? data.primaryAttendance.totalSessionsIncludingActivity : 0;
-            const presentClasses = data.primaryAttendance ? data.primaryAttendance.present : 0;
-            const absentClasses = data.primaryAttendance ? data.primaryAttendance.absent : 0;
+            const primStats = data.primary.primaryAttendance || {};
+            document.getElementById('disp-total').textContent = primStats.totalSessionsIncludingActivity || 0;
+            document.getElementById('disp-present').textContent = primStats.present || 0;
+            document.getElementById('disp-absent').textContent = primStats.absent || 0;
 
-            // 2. Update Basic UI Elements
-            document.getElementById('display-name').textContent = studentName;
-            document.getElementById('display-roll').textContent = rollNo;
+            document.getElementById('disp-final').style.color = overallPct >= 75 ? 'var(--present)' : 'var(--absent)';
+
+            renderCalendarGrid();
+
+            const subjContainer = document.getElementById('subject-container');
+            subjContainer.innerHTML = "";
             
-            const formattedAttendance = parseFloat(attendance).toFixed(1);
-            document.getElementById('display-percentage').textContent = formattedAttendance + '%';
+            (data.subjectWise.subjects || []).forEach((sub, idx) => {
+                const row = document.createElement('div');
+                row.className = 'subject-row-strict';
+                
+                const color = barColors[idx % barColors.length];
+                const isPassing = sub.percentage >= 75;
+                const badgeBg = isPassing ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                const badgeText = isPassing ? 'var(--present)' : 'var(--absent)';
 
-            // 3. Update Detailed Class Stats UI
-            document.getElementById('display-total').textContent = totalClasses;
-            document.getElementById('display-present').textContent = presentClasses;
-            document.getElementById('display-absent').textContent = absentClasses;
+                row.innerHTML = `
+                    <div class="subj-name-col" title="${sub.subjectName}">${sub.subjectName}</div>
+                    <div class="subj-bar-wrapper">
+                        <div class="subj-bar-fill" style="width: ${sub.percentage}%; background-color: ${color};"></div>
+                    </div>
+                    <div class="subj-pct-badge" style="background: ${badgeBg}; color: ${badgeText};">
+                        ${sub.percentage}%
+                    </div>
+                    <div class="subj-classes-count">
+                        ${sub.present}/${sub.numberOfClasses}
+                    </div>
+                `;
+                subjContainer.appendChild(row);
+            });
 
-            // 4. Animate the SVG Circular Progress Bar
-            const circle = document.getElementById('progress-bar');
-            const radius = circle.r.baseVal.value;
-            const circumference = radius * 2 * Math.PI;
-            
-            const offset = circumference - (formattedAttendance / 100) * circumference;
-            circle.style.strokeDashoffset = offset;
-
-            // 5. Dynamic Coloring
-            if (formattedAttendance >= 75.0) {
-                circle.style.stroke = "var(--success)"; // Green
-            } else {
-                circle.style.stroke = "var(--danger)"; // Red
-            }
-
-            // 6. Switch Views
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('dashboard-view').style.display = 'block';
         }
 
-        function logout() {
+        function renderCalendarGrid() {
+            const calContainer = document.getElementById('calendar-container');
+            calContainer.innerHTML = "";
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year} Calendar`;
+
+            const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            days.forEach(d => calContainer.innerHTML += `<div class="cal-day-name">${d}</div>`);
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDayIndex; i++) calContainer.innerHTML += `<div></div>`;
+
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const monthStatusMap = monthlyCalendarMap[monthKey] || {};
+
+            for (let dateNum = 1; dateNum <= totalDays; dateNum++) {
+                const dayStr = String(dateNum).padStart(2, '0');
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+                const status = monthStatusMap[dateStr];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `cal-date ${status ? 'status-' + status : ''}`;
+                dayEl.textContent = dateNum;
+                
+                // Clicking ANY date fetches recorded classes or daily timetable
+                dayEl.onclick = () => fetchDailyClasses(dateStr);
+
+                calContainer.appendChild(dayEl);
+            }
+        }
+
+        async function changeMonth(offset) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+            
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth() + 1;
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+            if (!monthlyCalendarMap[monthKey]) {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/month-calendar`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            loginId: cachedCredentials.loginId,
+                            password: cachedCredentials.password,
+                            month: month,
+                            year: year,
+                            semNo: studentContext.semNo
+                        })
+                    });
+                    const data = await res.json();
+                    monthlyCalendarMap[monthKey] = data || {};
+                } catch (err) {
+                    console.error("Failed month map sync");
+                }
+            }
+            renderCalendarGrid();
+        }
+
+        async function fetchDailyClasses(dateStr) {
+            const listEl = document.getElementById('modal-period-list');
+            document.getElementById('modal-date-title').textContent = `Classes for ${dateStr}`;
+            document.getElementById('no-record-container').innerHTML = "";
+            document.getElementById('class-modal').style.display = 'flex';
+
+            if (dailyClassesCache[dateStr]) {
+                renderModalPeriods(dailyClassesCache[dateStr]);
+                return;
+            }
+
+            listEl.innerHTML = "Fetching schedule & logs...";
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/daily-classes`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        loginId: cachedCredentials.loginId,
+                        password: cachedCredentials.password,
+                        date: dateStr,
+                        classroomId: studentContext.classroomId,
+                        semNo: studentContext.semNo
+                    })
+                });
+
+                const payload = await res.json();
+                dailyClassesCache[dateStr] = payload;
+                renderModalPeriods(payload);
+
+            } catch (err) {
+                listEl.innerHTML = "<div style='color: var(--absent); padding: 10px;'>Failed to load schedule log.</div>";
+            }
+        }
+
+        function renderModalPeriods(payload) {
+            const listEl = document.getElementById('modal-period-list');
+            const bannerEl = document.getElementById('no-record-container');
+            listEl.innerHTML = "";
+            bannerEl.innerHTML = "";
+
+            const hasRecord = payload.hasRecord;
+            const items = payload.data || [];
+
+            if (!hasRecord) {
+                bannerEl.innerHTML = `<div class="no-record-banner">⚠️ Attendance Not Posted Yet — Showing Timetable</div>`;
+            }
+
+            if (!Array.isArray(items) || items.length === 0) {
+                listEl.innerHTML = "<div style='color: var(--text-muted); padding: 10px; text-align: center;'>No scheduled classes or records for this day (Holiday/Off-day).</div>";
+                return;
+            }
+
+            items.forEach(p => {
+                if (hasRecord) {
+                    // Actual Recorded Attendance Session
+                    const isPresent = p.isAbsent === 0;
+                    listEl.innerHTML += `
+                        <div class="period-item">
+                            <div>
+                                <strong style="color: var(--text);">${p.subjectName}</strong>
+                                <div style="font-size: 11px; color: var(--text-muted);">${p.subjectCode || p.refCode}</div>
+                            </div>
+                            <span class="${isPresent ? 'badge-p' : 'badge-a'}">
+                                ${isPresent ? 'PRESENT' : 'ABSENT'}
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    // Scheduled Timetable Item from classroom-timetables
+                    const subjName = p.subject ? p.subject.name : "Scheduled Class";
+                    const subjCode = p.subject ? p.subject.subjectCode : "";
+                    const timeRange = (p.fromTime && p.toTime) ? `${p.fromTime.substring(0,5)} - ${p.toTime.substring(0,5)}` : "Slot";
+                    const faculty = (p.faculties && p.faculties.length > 0) ? p.faculties[0].fullName : "";
+
+                    listEl.innerHTML += `
+                        <div class="period-item">
+                            <div>
+                                <strong style="color: var(--text);">${subjName}</strong>
+                                <div style="font-size: 11px; color: var(--text-muted);">${subjCode} ${faculty ? '• ' + faculty : ''}</div>
+                            </div>
+                            <span class="badge-tt">${timeRange}</span>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function closeModal() { document.getElementById('class-modal').style.display = 'none'; }
+
+        function signOut() {
+            localStorage.removeItem('campx_loginId');
+            localStorage.removeItem('campx_password');
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
             document.getElementById('password').value = "";
-            
-            const circle = document.getElementById('progress-bar');
-            circle.style.strokeDashoffset = 440; 
-            
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('login-view').style.display = 'block';
         }
