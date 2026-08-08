@@ -48,13 +48,60 @@
             color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
         }
 
-        .top-badge-wrapper { display: flex; justify-content: center; margin-bottom: 14px; }
-        .roll-semicircle-badge {
-            background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); border-top: none;
-            color: var(--primary-light); padding: 6px 20px 8px 20px;
-            border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
-            font-weight: 800; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
+        .top-badge-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            gap: 10px; margin-bottom: 12px; position: relative;
         }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4), inset 0 0 5px rgba(99, 102, 241, 0.2); }
+            50% { box-shadow: 0 0 18px rgba(99, 102, 241, 0.85), inset 0 0 10px rgba(99, 102, 241, 0.5); }
+            100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4), inset 0 0 5px rgba(99, 102, 241, 0.2); }
+        }
+
+        .roll-semicircle-badge {
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.25) 0%, rgba(17, 24, 39, 0.95) 100%);
+            border: 1.5px solid var(--primary); border-top: none;
+            color: var(--text); padding: 7px 22px 9px 22px;
+            border-bottom-left-radius: 22px; border-bottom-right-radius: 22px;
+            font-weight: 800; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase;
+            cursor: pointer; animation: pulseGlow 2.5s infinite ease-in-out; transition: transform 0.2s;
+            display: flex; align-items: center; gap: 6px; user-select: none;
+        }
+        .roll-semicircle-badge:hover { transform: translateY(2px); }
+        .badge-arrow { font-size: 10px; color: var(--primary-light); transition: transform 0.3s; }
+        .badge-arrow.rotated { transform: rotate(180deg); }
+
+        .btn-sync-refresh {
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 15px; transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .btn-sync-refresh:hover { border-color: var(--primary); color: var(--primary-light); transform: rotate(180deg); }
+        .btn-sync-refresh.spinning { animation: spin 1s linear infinite; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .profile-drawer {
+            width: 100%; max-width: 450px; max-height: 0; overflow: hidden;
+            transition: max-height 0.4s ease-in-out, margin 0.3s ease, opacity 0.3s ease; opacity: 0;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-top: 0;
+        }
+        .profile-drawer.open { max-height: 300px; opacity: 1; margin-top: 10px; margin-bottom: 12px; padding: 16px; }
+        .profile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .prof-item { background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); }
+        .prof-item.full-width { grid-column: span 2; }
+        .prof-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+        .prof-val { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .feature-hint-banner {
+            background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+            display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--primary-light); font-weight: 500;
+        }
+        .hint-close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 0 4px; }
 
         .top-metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px; }
         .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 4px; text-align: center; }
@@ -71,10 +118,7 @@
         }
 
         .calendar-nav { display: flex; align-items: center; gap: 10px; }
-        .cal-nav-btn {
-            background: var(--bg); border: 1px solid var(--border); color: var(--text);
-            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px;
-        }
+        .cal-nav-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; }
         .cal-nav-btn:hover { border-color: var(--primary); }
 
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
@@ -102,6 +146,9 @@
         .no-record-banner { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--partial); color: var(--partial); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 10px; }
         .period-list { margin-top: 14px; max-height: 300px; overflow-y: auto; }
         .period-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+        
+        .period-time-badge { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-top: 3px; display: inline-block; }
+        
         .badge-p { color: var(--present); font-weight: 800; }
         .badge-a { color: var(--absent); font-weight: 800; }
         .badge-tt { color: var(--text-muted); font-weight: 600; font-size: 11px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; }
@@ -129,7 +176,45 @@
         <div id="dashboard-view" style="display: none;">
             
             <div class="top-badge-wrapper">
-                <div class="roll-semicircle-badge" id="disp-roll">ROLL NO</div>
+                <div class="roll-semicircle-badge" id="disp-roll-badge" onclick="toggleProfileDrawer()" title="Tap to view full profile">
+                    <span id="disp-roll">23701A05B8</span>
+                    <span class="badge-arrow" id="badge-arrow">▾</span>
+                </div>
+                <button class="btn-sync-refresh" id="refresh-btn" onclick="forceSyncRefresh()" title="Sync & Refresh Attendance Data">🔄</button>
+            </div>
+
+            <div class="profile-drawer" id="profile-drawer">
+                <div class="profile-grid">
+                    <div class="prof-item full-width">
+                        <div class="prof-label">Student Name</div>
+                        <div class="prof-val" id="prof-name">Mithra Tej Varma Nandimandalam</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Roll Number</div>
+                        <div class="prof-val" id="prof-roll">23701A05B8</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Branch & Section</div>
+                        <div class="prof-val" id="prof-branch">CSE - B</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Semester</div>
+                        <div class="prof-val" id="prof-sem">7</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Gender</div>
+                        <div class="prof-val" id="prof-gender">Male</div>
+                    </div>
+                    <div class="prof-item full-width">
+                        <div class="prof-label">College Email</div>
+                        <div class="prof-val" id="prof-email">23701a05b8@aitsrajampet.ac.in</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-hint-banner" id="hint-banner">
+                <span>💡 <strong>Quick Tip:</strong> Tap your Roll No for profile, 🔄 to refresh changes, or tap any date for class timings!</span>
+                <button class="hint-close-btn" onclick="dismissHint()">✕</button>
             </div>
 
             <div class="top-metrics-grid">
@@ -143,7 +228,7 @@
             <div class="dashboard-content-grid">
                 <div class="panel-box">
                     <div class="panel-header">
-                        <span id="calendar-title">July 2026 Calendar</span>
+                        <span id="calendar-title">Calendar</span>
                         <div class="calendar-nav">
                             <button class="cal-nav-btn" onclick="changeMonth(-1)">←</button>
                             <button class="cal-nav-btn" onclick="changeMonth(1)">→</button>
@@ -178,27 +263,74 @@
     </div>
 
     <script>
-        let cachedCredentials = {};
+        let cachedCredentials = { loginId: "", password: "" };
         let dailyClassesCache = {};
         let monthlyCalendarMap = {};
-
-        // Dynamic Student Context Extracted from Login Response
         let studentContext = { classroomId: "57", semNo: "7" };
 
-        let currentCalendarDate = new Date(2026, 6, 1); // July 2026
+        const now = new Date();
+        let currentCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const API_BASE_URL = "https://attendance-temn.onrender.com"; // Update to Render URL when deploying
+        const API_BASE_URL = "http://127.0.0.1:8000"; // Change to Render URL when deploying
         const barColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedLoginId = localStorage.getItem('campx_loginId');
-            const savedPassword = localStorage.getItem('campx_password');
+        function setCookie(name, value, days = 14) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${encodeURIComponent(value)}; expires=${date.toUTCString()}; path=/; SameSite=Lax`;
+        }
 
-            if (savedLoginId && savedPassword) {
-                document.getElementById('loginId').value = savedLoginId;
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i].trim();
+                if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
+            const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
+
+            const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
+            const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
+            const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
+
+            if (sessionStorage.getItem("hint_dismissed") === "true") {
+                const hint = document.getElementById('hint-banner');
+                if (hint) hint.style.display = "none";
+            }
+
+            if (savedEmail && savedPassword) {
+                cachedCredentials = { loginId: savedEmail, password: savedPassword };
+                document.getElementById('loginId').value = savedEmail;
                 document.getElementById('password').value = savedPassword;
-                loginAndFetch(savedLoginId, savedPassword);
+
+                if (cachedDashboardData) {
+                    try {
+                        const parsedData = JSON.parse(cachedDashboardData);
+                        if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
+                        
+                        if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
+                        if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
+
+                        renderDashboard(parsedData);
+
+                        // Trigger Background Prefetch for Previous & Next Months
+                        triggerBackgroundAdjacentPrefetch();
+                    } catch (e) {
+                        loginAndFetch(savedEmail, savedPassword);
+                    }
+                } else {
+                    loginAndFetch(savedEmail, savedPassword);
+                }
             }
         });
 
@@ -208,9 +340,6 @@
             if (!loginId || !password) return alert("Please enter credentials");
 
             cachedCredentials = { loginId, password };
-            dailyClassesCache = {};
-            monthlyCalendarMap = {};
-            
             document.getElementById('loading').style.display = "block";
 
             try {
@@ -222,30 +351,125 @@
 
                 const data = await res.json();
                 if (res.ok) {
-                    localStorage.setItem('campx_loginId', loginId);
-                    localStorage.setItem('campx_password', password);
+                    setCookie("campx_loginId", loginId);
+                    setCookie("campx_password", password);
+                    localStorage.setItem("campx_loginId", loginId);
+                    localStorage.setItem("campx_password", password);
                     
-                    // Capture Dynamic Context for this user (branch/classroom/sem)
-                    if (data.dynamicContext) {
-                        studentContext = data.dynamicContext;
+                    if (data.dynamicContext) studentContext = data.dynamicContext;
+
+                    const monthKey = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}`;
+                    monthlyCalendarMap[monthKey] = data.monthlyCalendar || {};
+
+                    if (data.dailyBundle) {
+                        Object.assign(dailyClassesCache, data.dailyBundle);
                     }
 
-                    monthlyCalendarMap["2026-07"] = data.monthlyCalendar || {};
+                    localStorage.setItem("campx_dashboard_cache", JSON.stringify(data));
+                    localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                    localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+
                     renderDashboard(data);
+
+                    // Trigger Background Prefetch for Previous & Next Months silently
+                    triggerBackgroundAdjacentPrefetch();
                 } else {
                     alert("Auth failed: " + data.detail);
                     signOut();
                 }
             } catch (err) {
-                alert("Server connection error.");
+                alert("Server connection error. Please check your backend.");
             } finally {
                 document.getElementById('loading').style.display = "none";
             }
         }
 
+        // BACKGROUND PREFETCH FUNCTION FOR PREVIOUS (-1) AND NEXT (+1) MONTHS
+        function triggerBackgroundAdjacentPrefetch() {
+            setTimeout(async () => {
+                const curYear = currentCalendarDate.getFullYear();
+                const curMonth = currentCalendarDate.getMonth() + 1;
+
+                // 1. Calculate Previous Month
+                let prevYear = curYear;
+                let prevMonth = curMonth - 1;
+                if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+
+                // 2. Calculate Next Month
+                let nextYear = curYear;
+                let nextMonth = curMonth + 1;
+                if (nextMonth === 13) { nextMonth = 1; nextYear++; }
+
+                // Silently prefetch previous month if not already cached
+                fetchMonthDataInBackground(prevYear, prevMonth);
+                
+                // Silently prefetch next month if not already cached
+                fetchMonthDataInBackground(nextYear, nextMonth);
+            }, 1000); // Waits 1s after dashboard load so main thread stays smooth
+        }
+
+        async function fetchMonthDataInBackground(year, month) {
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+            if (monthlyCalendarMap[monthKey]) return; // Already cached!
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/month-complete-data`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        loginId: cachedCredentials.loginId,
+                        password: cachedCredentials.password,
+                        month: month,
+                        year: year,
+                        classroomId: studentContext.classroomId,
+                        semNo: studentContext.semNo
+                    })
+                });
+
+                const batchData = await res.json();
+                if (res.ok) {
+                    monthlyCalendarMap[monthKey] = batchData.monthlyCalendar || {};
+                    if (batchData.dailyBundle) {
+                        Object.assign(dailyClassesCache, batchData.dailyBundle);
+                    }
+
+                    // Save pre-fetched results silently to localStorage
+                    localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                    localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+                }
+            } catch (err) {
+                console.log("Background prefetch skipped for", monthKey);
+            }
+        }
+
+        async function forceSyncRefresh() {
+            const btn = document.getElementById('refresh-btn');
+            btn.classList.add('spinning');
+
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
+
+            await loginAndFetch(cachedCredentials.loginId, cachedCredentials.password);
+
+            setTimeout(() => {
+                btn.classList.remove('spinning');
+            }, 600);
+        }
+
         function renderDashboard(data) {
             const student = data.primary.student || {};
-            document.getElementById('disp-roll').textContent = student.rollNo || "23701A05B8";
+            const classroom = data.primary.classroom || {};
+
+            const officialRoll = student.rollNo || "23701A05B8";
+            document.getElementById('disp-roll').textContent = officialRoll;
+            document.getElementById('prof-roll').textContent = officialRoll;
+
+            document.getElementById('prof-name').textContent = student.fullName || "Student Name";
+            document.getElementById('prof-email').textContent = student.email || cachedCredentials.loginId;
+            document.getElementById('prof-gender').textContent = (student.gender || "Male").toUpperCase();
+            document.getElementById('prof-sem').textContent = student.semNo || studentContext.semNo;
+            document.getElementById('prof-branch').textContent = `${student.branchCode || 'CSE'} (${classroom.name || 'Section B'})`;
+
             document.getElementById('disp-sem-badge').textContent = `Semester ${studentContext.semNo}`;
 
             const overallPct = parseFloat(data.subjectWise.overallAttendance || data.primary.attendancePercentage || 0).toFixed(1);
@@ -294,6 +518,24 @@
             document.getElementById('dashboard-view').style.display = 'block';
         }
 
+        function toggleProfileDrawer() {
+            const drawer = document.getElementById('profile-drawer');
+            const arrow = document.getElementById('badge-arrow');
+            
+            if (drawer.classList.contains('open')) {
+                drawer.classList.remove('open');
+                arrow.classList.remove('rotated');
+            } else {
+                drawer.classList.add('open');
+                arrow.classList.add('rotated');
+            }
+        }
+
+        function dismissHint() {
+            document.getElementById('hint-banner').style.display = 'none';
+            sessionStorage.setItem("hint_dismissed", "true");
+        }
+
         function renderCalendarGrid() {
             const calContainer = document.getElementById('calendar-container');
             calContainer.innerHTML = "";
@@ -324,8 +566,7 @@
                 dayEl.className = `cal-date ${status ? 'status-' + status : ''}`;
                 dayEl.textContent = dateNum;
                 
-                // Clicking ANY date fetches recorded classes or daily timetable
-                dayEl.onclick = () => fetchDailyClasses(dateStr);
+                dayEl.onclick = () => showDailyClassModal(dateStr);
 
                 calContainer.appendChild(dayEl);
             }
@@ -338,9 +579,10 @@
             const month = currentCalendarDate.getMonth() + 1;
             const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
+            // Check if month data is already pre-fetched
             if (!monthlyCalendarMap[monthKey]) {
                 try {
-                    const res = await fetch(`${API_BASE_URL}/api/month-calendar`, {
+                    const res = await fetch(`${API_BASE_URL}/api/month-complete-data`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -348,51 +590,37 @@
                             password: cachedCredentials.password,
                             month: month,
                             year: year,
+                            classroomId: studentContext.classroomId,
                             semNo: studentContext.semNo
                         })
                     });
-                    const data = await res.json();
-                    monthlyCalendarMap[monthKey] = data || {};
+                    const batchData = await res.json();
+                    
+                    monthlyCalendarMap[monthKey] = batchData.monthlyCalendar || {};
+                    if (batchData.dailyBundle) {
+                        Object.assign(dailyClassesCache, batchData.dailyBundle);
+                    }
+
+                    localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                    localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
                 } catch (err) {
                     console.error("Failed month map sync");
                 }
             }
+            
             renderCalendarGrid();
+            
+            // Trigger prefetch for new surrounding months
+            triggerBackgroundAdjacentPrefetch();
         }
 
-        async function fetchDailyClasses(dateStr) {
-            const listEl = document.getElementById('modal-period-list');
+        function showDailyClassModal(dateStr) {
             document.getElementById('modal-date-title').textContent = `Classes for ${dateStr}`;
             document.getElementById('no-record-container').innerHTML = "";
             document.getElementById('class-modal').style.display = 'flex';
 
-            if (dailyClassesCache[dateStr]) {
-                renderModalPeriods(dailyClassesCache[dateStr]);
-                return;
-            }
-
-            listEl.innerHTML = "Fetching schedule & logs...";
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/daily-classes`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        loginId: cachedCredentials.loginId,
-                        password: cachedCredentials.password,
-                        date: dateStr,
-                        classroomId: studentContext.classroomId,
-                        semNo: studentContext.semNo
-                    })
-                });
-
-                const payload = await res.json();
-                dailyClassesCache[dateStr] = payload;
-                renderModalPeriods(payload);
-
-            } catch (err) {
-                listEl.innerHTML = "<div style='color: var(--absent); padding: 10px;'>Failed to load schedule log.</div>";
-            }
+            const payload = dailyClassesCache[dateStr] || { hasRecord: false, data: [] };
+            renderModalPeriods(payload);
         }
 
         function renderModalPeriods(payload) {
@@ -402,59 +630,104 @@
             bannerEl.innerHTML = "";
 
             const hasRecord = payload.hasRecord;
-            const items = payload.data || [];
+            const timetable = payload.timetable || [];
+            const attendanceLogs = payload.attendance || payload.data || [];
 
-            if (!hasRecord) {
-                bannerEl.innerHTML = `<div class="no-record-banner">⚠️ Attendance Not Posted Yet — Showing Timetable</div>`;
-            }
+            if (Array.isArray(timetable) && timetable.length > 0) {
+                if (!hasRecord) {
+                    bannerEl.innerHTML = `<div class="no-record-banner">⚠️ Attendance Not Posted Yet — Showing Timetable</div>`;
+                }
 
-            if (!Array.isArray(items) || items.length === 0) {
-                listEl.innerHTML = "<div style='color: var(--text-muted); padding: 10px; text-align: center;'>No scheduled classes or records for this day (Holiday/Off-day).</div>";
+                const attMap = {};
+                attendanceLogs.forEach(rec => {
+                    if (rec.subjectId) attMap[rec.subjectId] = rec;
+                    if (rec.subjectName) attMap[rec.subjectName] = rec;
+                });
+
+                timetable.forEach(slot => {
+                    const subjName = slot.subject ? slot.subject.name : (slot.subjectName || "Scheduled Class");
+                    const subjCode = slot.subject ? slot.subject.subjectCode : (slot.subjectCode || "");
+                    const timeRange = (slot.fromTime && slot.toTime) ? `${slot.fromTime.substring(0, 5)} - ${slot.toTime.substring(0, 5)}` : "";
+                    const faculty = (slot.faculties && slot.faculties.length > 0) ? slot.faculties[0].fullName : "";
+                    const slotSubjId = slot.subjectId || (slot.subject ? slot.subject.id : null);
+
+                    const matchRecord = attMap[slotSubjId] || attMap[subjName];
+
+                    if (matchRecord) {
+                        const isPresent = matchRecord.isAbsent === 0;
+                        listEl.innerHTML += `
+                            <div class="period-item">
+                                <div>
+                                    <strong style="color: var(--text);">${subjName}</strong>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                        ${subjCode} ${faculty ? '• ' + faculty : ''}
+                                    </div>
+                                    ${timeRange ? `<div class="period-time-badge">⏱ ${timeRange}</div>` : ''}
+                                </div>
+                                <span class="${isPresent ? 'badge-p' : 'badge-a'}">
+                                    ${isPresent ? 'PRESENT' : 'ABSENT'}
+                                </span>
+                            </div>
+                        `;
+                    } else {
+                        listEl.innerHTML += `
+                            <div class="period-item">
+                                <div>
+                                    <strong style="color: var(--text);">${subjName}</strong>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                        ${subjCode} ${faculty ? '• ' + faculty : ''}
+                                    </div>
+                                </div>
+                                <span class="badge-tt">${timeRange || 'Scheduled'}</span>
+                            </div>
+                        `;
+                    }
+                });
                 return;
             }
 
-            items.forEach(p => {
-                if (hasRecord) {
-                    // Actual Recorded Attendance Session
-                    const isPresent = p.isAbsent === 0;
+            if (Array.isArray(attendanceLogs) && attendanceLogs.length > 0) {
+                attendanceLogs.forEach(rec => {
+                    const isPresent = rec.isAbsent === 0;
+                    const subjName = rec.subjectName || (rec.subject ? rec.subject.name : "Class");
+                    const subjCode = rec.subjectCode || rec.refCode || "";
+                    
+                    let timeStr = "";
+                    if (rec.timeRange) {
+                        timeStr = rec.timeRange;
+                    } else if (rec.fromTime && rec.toTime) {
+                        timeStr = `${rec.fromTime.substring(0, 5)} - ${rec.toTime.substring(0, 5)}`;
+                    }
+
                     listEl.innerHTML += `
                         <div class="period-item">
                             <div>
-                                <strong style="color: var(--text);">${p.subjectName}</strong>
-                                <div style="font-size: 11px; color: var(--text-muted);">${p.subjectCode || p.refCode}</div>
+                                <strong style="color: var(--text);">${subjName}</strong>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${subjCode}</div>
+                                ${timeStr ? `<div class="period-time-badge">⏱ ${timeStr}</div>` : ''}
                             </div>
                             <span class="${isPresent ? 'badge-p' : 'badge-a'}">
                                 ${isPresent ? 'PRESENT' : 'ABSENT'}
                             </span>
                         </div>
                     `;
-                } else {
-                    // Scheduled Timetable Item from classroom-timetables
-                    const subjName = p.subject ? p.subject.name : "Scheduled Class";
-                    const subjCode = p.subject ? p.subject.subjectCode : "";
-                    const timeRange = (p.fromTime && p.toTime) ? `${p.fromTime.substring(0,5)} - ${p.toTime.substring(0,5)}` : "Slot";
-                    const faculty = (p.faculties && p.faculties.length > 0) ? p.faculties[0].fullName : "";
+                });
+                return;
+            }
 
-                    listEl.innerHTML += `
-                        <div class="period-item">
-                            <div>
-                                <strong style="color: var(--text);">${subjName}</strong>
-                                <div style="font-size: 11px; color: var(--text-muted);">${subjCode} ${faculty ? '• ' + faculty : ''}</div>
-                            </div>
-                            <span class="badge-tt">${timeRange}</span>
-                        </div>
-                    `;
-                }
-            });
+            listEl.innerHTML = "<div style='color: var(--text-muted); padding: 10px; text-align: center;'>No scheduled classes or records for this day (Holiday/Off-day).</div>";
         }
 
         function closeModal() { document.getElementById('class-modal').style.display = 'none'; }
 
         function signOut() {
-            localStorage.removeItem('campx_loginId');
-            localStorage.removeItem('campx_password');
+            deleteCookie("campx_loginId");
+            deleteCookie("campx_password");
+            localStorage.clear();
+            sessionStorage.clear();
             dailyClassesCache = {};
             monthlyCalendarMap = {};
+            cachedCredentials = { loginId: "", password: "" };
             document.getElementById('password').value = "";
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('login-view').style.display = 'block';
