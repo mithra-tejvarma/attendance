@@ -176,3 +176,56 @@ def get_month_complete_data(req: MonthBatchRequest):
         "monthlyCalendar": month_calendar,
         "dailyBundle": daily_bundle
     }
+
+class TodaySyncRequest(BaseModel):
+    loginId: str
+    password: str
+    classroomId: str
+    semNo: str
+    date: str  # Format: YYYY-MM-DD
+    month: int
+    year: int
+
+@app.post("/api/today-sync")
+def sync_today_attendance(req: TodaySyncRequest):
+    """Fast lightweight endpoint to auto-sync today's live attendance on page load."""
+    session, headers = authenticate_campx(req.loginId, req.password)
+    if not session:
+        raise HTTPException(status_code=401, detail="Session expired.")
+
+    # 1. Fetch updated primary stats (percentages & counts)
+    primary_url = "https://api.campx.in/student-api/student-attendance/my-secondary-attendance"
+    primary_res = session.get(primary_url, headers=headers)
+    primary_data = primary_res.json() if primary_res.status_code == 200 else {}
+
+    # 2. Fetch updated subject breakdown
+    subjects_url = "https://api.campx.in/student-api/student-attendance/my-all-semester-attendance"
+    subjects_res = session.get(subjects_url, params={"semNo": req.semNo}, headers=headers)
+
+    # 3. Fetch current month date-wise calendar map
+    calendar_url = "https://api.campx.in/student-api/student-attendance/my-date-wise-attendance"
+    calendar_res = session.get(calendar_url, params={"semNo": str(req.semNo), "month": str(req.month), "year": str(req.year)}, headers=headers)
+
+    # 4. Fetch today's class schedule / recorded logs
+    classes_url = "https://api.campx.in/student-api/student-attendance/my-classes"
+    params = {"fromDate": req.date, "toDate": req.date, "semNo": str(req.semNo), "classroomId": str(req.classroomId)}
+    rec_res = session.get(classes_url, params=params, headers=headers)
+    recorded = rec_res.json() if rec_res.status_code == 200 and isinstance(rec_res.json(), list) else []
+
+    # 5. Fetch today's timetable
+    timetable_url = "https://api.campx.in/student-api/classroom-timetables"
+    tt_params = {"fromDate": req.date, "toDate": req.date, "classroomId": str(req.classroomId)}
+    tt_res = session.get(timetable_url, params=tt_params, headers=headers)
+    timetable = tt_res.json() if tt_res.status_code == 200 and isinstance(tt_res.json(), list) else []
+    timetable.sort(key=lambda x: (x.get("orderNumber", 0), x.get("fromTime", "")))
+
+    return {
+        "primary": primary_data,
+        "subjectWise": subjects_res.json() if subjects_res.status_code == 200 else {},
+        "monthlyCalendar": calendar_res.json() if calendar_res.status_code in [200, 304] else {},
+        "todayBundle": {
+            "hasRecord": len(recorded) > 0,
+            "timetable": timetable,
+            "attendance": recorded
+        }
+    }
