@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 from datetime import datetime
+import calendar
 
 app = FastAPI()
 
@@ -18,28 +19,22 @@ class UserCredentials(BaseModel):
     loginId: str
     password: str
 
-class MonthRequest(BaseModel):
+class MonthBatchRequest(BaseModel):
     loginId: str
     password: str
     month: int
     year: int
-    semNo: str
-
-class DateRequest(BaseModel):
-    loginId: str
-    password: str
-    date: str  # "YYYY-MM-DD"
     classroomId: str
     semNo: str
 
 
-def get_authenticated_session(login_id: str, password: str):
+def authenticate_campx(login_id: str, password: str):
     session = requests.Session()
     login_url = "https://api.campx.in/auth-server/auth-v2/login"
 
     login_payload = {
-        "loginId": login_id,
-        "password": password,
+        "loginId": login_id.strip(),
+        "password": password.strip(),
         "deviceType": "browser",
         "clientName": "unknown",
         "loginType": "USER",
@@ -52,6 +47,8 @@ def get_authenticated_session(login_id: str, password: str):
 
     headers = {
         "accept": "application/json, text/plain, */*",
+        "accept-language": "en-US,en;q=0.9",
+        "content-type": "application/json",
         "origin": "https://aits.campx.in",
         "referer": "https://aits.campx.in/",
         "x-tenant-id": "aits",
@@ -61,96 +58,116 @@ def get_authenticated_session(login_id: str, password: str):
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
-    login_res = session.post(login_url, json=login_payload, headers=headers)
-    if login_res.status_code != 201:
+    try:
+        login_res = session.post(login_url, json=login_payload, headers=headers)
+        if login_res.status_code != 201:
+            return None, None
+        return session, headers
+    except Exception as e:
+        print("Auth Exception:", e)
         return None, None
 
-    return session, headers
+
+def fetch_month_classes_batch(session, headers, classroom_id, sem_no, year, month):
+    """Fetches timetables and recorded attendance per day so the frontend overlays status accurately."""
+    _, num_days = calendar.monthrange(year, month)
+    from_date = f"{year}-{month:02d}-01"
+    to_date = f"{year}-{month:02d}-{num_days:02d}"
+
+    # 1. Fetch Recorded Attendance Logs
+    classes_url = "https://api.campx.in/student-api/student-attendance/my-classes"
+    params = {"fromDate": from_date, "toDate": to_date, "semNo": sem_no, "classroomId": classroom_id}
+    res = session.get(classes_url, params=params, headers=headers)
+    all_recorded = res.json() if res.status_code == 200 and isinstance(res.json(), list) else []
+
+    recorded_by_date = {}
+    for item in all_recorded:
+        d = item.get("date")
+        if d:
+            recorded_by_date.setdefault(d, []).append(item)
+
+    # 2. Fetch Master Timetable Slots
+    timetable_url = "https://api.campx.in/student-api/classroom-timetables"
+    tt_params = {"fromDate": from_date, "toDate": to_date, "classroomId": classroom_id}
+    tt_res = session.get(timetable_url, params=tt_params, headers=headers)
+    all_tt = tt_res.json() if tt_res.status_code == 200 and isinstance(tt_res.json(), list) else []
+
+    tt_by_date = {}
+    for item in all_tt:
+        d = item.get("sessionDate")
+        if d:
+            tt_by_date.setdefault(d, []).append(item)
+
+    daily_bundle = {}
+    for day in range(1, num_days + 1):
+        date_str = f"{year}-{month:02d}-{day:02d}"
+        
+        tt_list = tt_by_date.get(date_str, [])
+        rec_list = recorded_by_date.get(date_str, [])
+
+        # Sort timetable chronologically
+        tt_list.sort(key=lambda x: (x.get("orderNumber", 0), x.get("fromTime", "")))
+
+        daily_bundle[date_str] = {
+            "hasRecord": len(rec_list) > 0,
+            "timetable": tt_list,
+            "attendance": rec_list
+        }
+
+    return daily_bundle
 
 
 @app.post("/api/attendance")
 def get_student_attendance(creds: UserCredentials):
-    session, headers = get_authenticated_session(creds.loginId, creds.password)
+    session, headers = authenticate_campx(creds.loginId, creds.password)
     if not session:
-        raise HTTPException(status_code=401, detail="Invalid CampX credentials")
+        raise HTTPException(status_code=401, detail="Invalid CampX credentials or login rejected by server")
 
-    # 1. Fetch Primary Profile to dynamically extract student's classroomId and semNo
     primary_url = "https://api.campx.in/student-api/student-attendance/my-secondary-attendance"
     primary_res = session.get(primary_url, headers=headers)
     primary_data = primary_res.json() if primary_res.status_code == 200 else {}
 
-    # Dynamic extraction of Classroom and Sem Number
     student_obj = primary_data.get("student", {})
     classroom_id = str(student_obj.get("classroomId", "57"))
     sem_no = str(student_obj.get("semNo", "7"))
 
-    # 2. Fetch Subject-wise Attendance
     subjects_url = "https://api.campx.in/student-api/student-attendance/my-all-semester-attendance"
     subjects_res = session.get(subjects_url, params={"semNo": sem_no}, headers=headers)
 
-    # 3. Fetch Current Month Calendar Data
     now = datetime.now()
     calendar_url = "https://api.campx.in/student-api/student-attendance/my-date-wise-attendance"
     calendar_res = session.get(calendar_url, params={"semNo": sem_no, "month": str(now.month), "year": str(now.year)}, headers=headers)
+    month_calendar = calendar_res.json() if calendar_res.status_code in [200, 304] else {}
+
+    daily_bundle = fetch_month_classes_batch(session, headers, classroom_id, sem_no, now.year, now.month)
 
     return {
         "primary": primary_data,
         "subjectWise": subjects_res.json() if subjects_res.status_code == 200 else {},
-        "monthlyCalendar": calendar_res.json() if calendar_res.status_code in [200, 304] else {},
+        "monthlyCalendar": month_calendar,
+        "dailyBundle": daily_bundle,
         "dynamicContext": {
             "classroomId": classroom_id,
-            "semNo": sem_no
+            "semNo": sem_no,
+            "currentMonth": now.month,
+            "currentYear": now.year
         }
     }
 
 
-@app.post("/api/month-calendar")
-def get_month_calendar(req: MonthRequest):
-    session, headers = get_authenticated_session(req.loginId, req.password)
+@app.post("/api/month-complete-data")
+def get_month_complete_data(req: MonthBatchRequest):
+    session, headers = authenticate_campx(req.loginId, req.password)
     if not session:
-        raise HTTPException(status_code=401, detail="Session expired")
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
 
     calendar_url = "https://api.campx.in/student-api/student-attendance/my-date-wise-attendance"
-    res = session.get(calendar_url, params={"semNo": str(req.semNo), "month": str(req.month), "year": str(req.year)}, headers=headers)
-    
-    return res.json() if res.status_code in [200, 304] else {}
+    calendar_res = session.get(calendar_url, params={"semNo": str(req.semNo), "month": str(req.month), "year": str(req.year)}, headers=headers)
+    month_calendar = calendar_res.json() if calendar_res.status_code in [200, 304] else {}
 
+    daily_bundle = fetch_month_classes_batch(session, headers, req.classroomId, req.semNo, req.year, req.month)
 
-@app.post("/api/daily-classes")
-def get_daily_classes(req: DateRequest):
-    session, headers = get_authenticated_session(req.loginId, req.password)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session expired")
-
-    # Step A: Check if actual attendance records exist for this date
-    classes_url = "https://api.campx.in/student-api/student-attendance/my-classes"
-    params = {"fromDate": req.date, "toDate": req.date, "semNo": str(req.semNo), "classroomId": str(req.classroomId)}
-    res = session.get(classes_url, params=params, headers=headers)
-    
-    recorded_classes = res.json() if res.status_code == 200 else []
-
-    if isinstance(recorded_classes, list) and len(recorded_classes) > 0:
-        return {"hasRecord": True, "data": recorded_classes}
-
-    # Step B: If no recorded attendance (e.g. tomorrow/future/unmarked date), fetch classroom timetables
-    timetable_url = "https://api.campx.in/student-api/classroom-timetables"
-    tt_res = session.get(timetable_url, params={"fromDate": req.date, "toDate": req.date, "classroomId": str(req.classroomId)}, headers=headers)
-    
-    raw_tt = tt_res.json() if tt_res.status_code == 200 else []
-
-    filtered_timetable = []
-
-    if isinstance(raw_tt, list):
-        for item in raw_tt:
-            # Match current sem & requested date
-            session_date = item.get("sessionDate", "")
-            item_sem = str(item.get("semNo", ""))
-
-            # Filter matching date and current sem
-            if (session_date == req.date or not session_date) and (item_sem == str(req.semNo) or not item_sem):
-                filtered_timetable.append(item)
-
-        # Sort timetable chronologically by period order / start time
-        filtered_timetable.sort(key=lambda x: (x.get("orderNumber", 0), x.get("fromTime", "")))
-
-    return {"hasRecord": False, "data": filtered_timetable}
+    return {
+        "monthlyCalendar": month_calendar,
+        "dailyBundle": daily_bundle
+    }
