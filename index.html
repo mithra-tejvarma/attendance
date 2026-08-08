@@ -17,6 +17,7 @@
             --present: #10b981;
             --absent: #ef4444;
             --partial: #f59e0b;
+            --gold: #fbbf24;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -96,6 +97,23 @@
         .prof-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
         .prof-val { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        /* HOLIDAY ANNOUNCEMENT BANNERS */
+        .holiday-announcement-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .holiday-announcement-banner {
+            display: none;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+            border: 1px solid var(--partial);
+            border-radius: 12px; padding: 12px 16px;
+            color: var(--text); font-size: 13px; font-weight: 600;
+            align-items: center; justify-content: space-between;
+        }
+
         .feature-hint-banner {
             background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3);
             border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
@@ -147,11 +165,30 @@
         .period-list { margin-top: 14px; max-height: 300px; overflow-y: auto; }
         .period-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
         
-        .period-time-badge { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-top: 3px; display: inline-block; }
+        /* SHINING GOLD TIME BADGE EFFECT FOR ALL SLOTS */
+        @keyframes goldShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .period-time-badge, .badge-tt { 
+            font-size: 11px; 
+            font-weight: 700;
+            color: #fef08a; 
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.12) 0%, rgba(253, 224, 71, 0.35) 50%, rgba(251, 191, 36, 0.12) 100%);
+            background-size: 200% 100%;
+            animation: goldShimmer 3s infinite linear;
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            padding: 3px 8px; 
+            border-radius: 6px; 
+            margin-top: 4px; 
+            display: inline-block; 
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.15);
+            text-shadow: 0 0 4px rgba(251, 191, 36, 0.3);
+        }
         
         .badge-p { color: var(--present); font-weight: 800; }
         .badge-a { color: var(--absent); font-weight: 800; }
-        .badge-tt { color: var(--text-muted); font-weight: 600; font-size: 11px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; }
 
         .signout-container { display: flex; justify-content: center; margin-top: 16px; }
         .btn-signout { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 20px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; }
@@ -187,7 +224,7 @@
                 <div class="profile-grid">
                     <div class="prof-item full-width">
                         <div class="prof-label">Student Name</div>
-                        <div class="prof-val" id="prof-name">Mithra Tej Varma Nandimandalam</div>
+                        <div class="prof-val" id="prof-name">MITHRA TEJ VARMA NANDIMANDALAM</div>
                     </div>
                     <div class="prof-item">
                         <div class="prof-label">Roll Number</div>
@@ -195,7 +232,7 @@
                     </div>
                     <div class="prof-item">
                         <div class="prof-label">Branch & Section</div>
-                        <div class="prof-val" id="prof-branch">CSE - B</div>
+                        <div class="prof-val" id="prof-branch">CSE - Section B</div>
                     </div>
                     <div class="prof-item">
                         <div class="prof-label">Semester</div>
@@ -203,12 +240,22 @@
                     </div>
                     <div class="prof-item">
                         <div class="prof-label">Gender</div>
-                        <div class="prof-val" id="prof-gender">Male</div>
+                        <div class="prof-val" id="prof-gender">MALE</div>
                     </div>
                     <div class="prof-item full-width">
                         <div class="prof-label">College Email</div>
                         <div class="prof-val" id="prof-email">23701a05b8@aitsrajampet.ac.in</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- HOLIDAY ANNOUNCEMENT BANNERS -->
+            <div class="holiday-announcement-container">
+                <div class="holiday-announcement-banner" id="today-holiday-banner">
+                    <span id="today-holiday-text">🎉 <strong>Today's Announcement:</strong> Today is a Holiday / No Scheduled Classes!</span>
+                </div>
+                <div class="holiday-announcement-banner" id="tomorrow-holiday-banner">
+                    <span id="tomorrow-holiday-text">🎉 <strong>Tomorrow's Announcement:</strong> Tomorrow is a Holiday / No Scheduled Classes!</span>
                 </div>
             </div>
 
@@ -271,9 +318,44 @@
         const now = new Date();
         let currentCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const API_BASE_URL = "https://attendance-temn.onrender.com"; // Change to Render URL when deploying
+        const API_BASE_URL = "https://attendance-temn.onrender.com"; 
         const barColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        // SAFE 12-HOUR TIME CONVERTER
+        function formatTo12Hour(timeStr) {
+            if (!timeStr) return "";
+            const cleanStr = timeStr.trim().substring(0, 5);
+            const parts = cleanStr.split(':');
+            if (parts.length < 2) return cleanStr;
+
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1];
+            if (isNaN(hours)) return cleanStr;
+
+            const period = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            const formattedHours = String(hours).padStart(2, '0');
+            return `${formattedHours}:${minutes} ${period}`;
+        }
+
+        function formatRangeTo12Hour(fromTime, toTime) {
+            if (!fromTime || !toTime) return "";
+            return `${formatTo12Hour(fromTime)} - ${formatTo12Hour(toTime)}`;
+        }
+
+        function formatRawString12Hour(rawRangeStr) {
+            if (!rawRangeStr) return "";
+            if (rawRangeStr.includes("AM") || rawRangeStr.includes("PM")) return rawRangeStr;
+
+            const parts = rawRangeStr.split('-');
+            if (parts.length === 2) {
+                const start12 = formatTo12Hour(parts[0]);
+                const end12 = formatTo12Hour(parts[1]);
+                if (start12 && end12) return `${start12} - ${end12}`;
+            }
+            return rawRangeStr;
+        }
 
         function setCookie(name, value, days = 14) {
             const date = new Date();
@@ -296,102 +378,101 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-    const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
-    const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
+            const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
+            const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
 
-    const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
-    const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
-    const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
+            const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
+            const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
+            const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
 
-    if (sessionStorage.getItem("hint_dismissed") === "true") {
-        const hint = document.getElementById('hint-banner');
-        if (hint) hint.style.display = "none";
-    }
-
-    if (savedEmail && savedPassword) {
-        cachedCredentials = { loginId: savedEmail, password: savedPassword };
-        document.getElementById('loginId').value = savedEmail;
-        document.getElementById('password').value = savedPassword;
-
-        if (cachedDashboardData) {
-            try {
-                const parsedData = JSON.parse(cachedDashboardData);
-                if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
-                
-                if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
-                if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
-
-                // 1. RENDER INSTANTLY FROM CACHE
-                renderDashboard(parsedData);
-
-                // 2. TRIGGER SILENT AUTO-SYNC FOR TODAY'S ATTENDANCE IN BACKGROUND!
-                autoSyncTodayAttendance();
-
-                // 3. Trigger adjacent month prefetch
-                triggerBackgroundAdjacentPrefetch();
-            } catch (e) {
-                loginAndFetch(savedEmail, savedPassword);
+            if (sessionStorage.getItem("hint_dismissed") === "true") {
+                const hint = document.getElementById('hint-banner');
+                if (hint) hint.style.display = "none";
             }
-        } else {
-            loginAndFetch(savedEmail, savedPassword);
-        }
-    }
-});
 
-// AUTOMATED TODAY'S ATTENDANCE BACKGROUND SYNC
-async function autoSyncTodayAttendance() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const dayStr = String(today.getDate()).padStart(2, '0');
-    const monthStr = String(month).padStart(2, '0');
-    const todayDateStr = `${year}-${monthStr}-${dayStr}`;
+            if (savedEmail && savedPassword) {
+                cachedCredentials = { loginId: savedEmail, password: savedPassword };
+                document.getElementById('loginId').value = savedEmail;
+                document.getElementById('password').value = savedPassword;
 
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/today-sync`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                loginId: cachedCredentials.loginId,
-                password: cachedCredentials.password,
-                classroomId: studentContext.classroomId,
-                semNo: studentContext.semNo,
-                date: todayDateStr,
-                month: month,
-                year: year
-            })
+                if (cachedDashboardData) {
+                    try {
+                        const parsedData = JSON.parse(cachedDashboardData);
+                        if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
+                        
+                        if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
+                        if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
+
+                        // 1. Render Dashboard Instantly from Cache (0ms)
+                        renderDashboard(parsedData);
+                        checkHolidayBannersLocally();
+
+                        // 2. Background Auto-Sync Today's Attendance
+                        autoSyncTodayAttendance();
+
+                        // 3. Background Prefetch Adjacent Months
+                        triggerBackgroundAdjacentPrefetch();
+                    } catch (e) {
+                        loginAndFetch(savedEmail, savedPassword);
+                    }
+                } else {
+                    loginAndFetch(savedEmail, savedPassword);
+                }
+            }
         });
 
-        if (!res.ok) return;
-        const syncData = await res.json();
+        // AUTOMATED TODAY'S ATTENDANCE BACKGROUND AUTO-SYNC
+        async function autoSyncTodayAttendance() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const dayStr = String(today.getDate()).padStart(2, '0');
+            const monthStr = String(month).padStart(2, '0');
+            const todayDateStr = `${year}-${monthStr}-${dayStr}`;
 
-        // Update Today's Schedule Cache
-        dailyClassesCache[todayDateStr] = syncData.todayBundle;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/today-sync`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        loginId: cachedCredentials.loginId,
+                        password: cachedCredentials.password,
+                        classroomId: studentContext.classroomId,
+                        semNo: studentContext.semNo,
+                        date: todayDateStr,
+                        month: month,
+                        year: year
+                    })
+                });
 
-        // Update Month Calendar Map
-        const monthKey = `${year}-${monthStr}`;
-        if (syncData.monthlyCalendar) {
-            monthlyCalendarMap[monthKey] = syncData.monthlyCalendar;
+                if (!res.ok) return;
+                const syncData = await res.json();
+
+                if (syncData.todayBundle) {
+                    dailyClassesCache[todayDateStr] = syncData.todayBundle;
+                }
+
+                const monthKey = `${year}-${monthStr}`;
+                if (syncData.monthlyCalendar) {
+                    monthlyCalendarMap[monthKey] = syncData.monthlyCalendar;
+                }
+
+                const cachedDashboard = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+                if (syncData.primary) cachedDashboard.primary = syncData.primary;
+                if (syncData.subjectWise) cachedDashboard.subjectWise = syncData.subjectWise;
+                if (syncData.monthlyCalendar) cachedDashboard.monthlyCalendar = syncData.monthlyCalendar;
+
+                localStorage.setItem("campx_dashboard_cache", JSON.stringify(cachedDashboard));
+                localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+
+                renderDashboard(cachedDashboard);
+                checkHolidayBannersLocally();
+
+            } catch (err) {
+                console.log("Background today auto-sync skipped (offline or server sleeping)");
+            }
         }
-
-        // Update Primary Dashboard Payload
-        const cachedDashboard = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
-        cachedDashboard.primary = syncData.primary;
-        cachedDashboard.subjectWise = syncData.subjectWise;
-        cachedDashboard.monthlyCalendar = syncData.monthlyCalendar;
-
-        // Save fresh updates back to localStorage
-        localStorage.setItem("campx_dashboard_cache", JSON.stringify(cachedDashboard));
-        localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
-        localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
-
-        // Smoothly re-render UI components with fresh today stats!
-        renderDashboard(cachedDashboard);
-
-    } catch (err) {
-        console.log("Background today auto-sync skipped (offline or network error)");
-    }
-}
 
         async function loginAndFetch(optLoginId, optPassword) {
             const loginId = optLoginId || document.getElementById('loginId').value;
@@ -429,8 +510,7 @@ async function autoSyncTodayAttendance() {
                     localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
 
                     renderDashboard(data);
-
-                    // Trigger Background Prefetch for Previous & Next Months silently
+                    checkHolidayBannersLocally();
                     triggerBackgroundAdjacentPrefetch();
                 } else {
                     alert("Auth failed: " + data.detail);
@@ -443,33 +523,28 @@ async function autoSyncTodayAttendance() {
             }
         }
 
-        // BACKGROUND PREFETCH FUNCTION FOR PREVIOUS (-1) AND NEXT (+1) MONTHS
+        // BACKGROUND PREFETCH FOR ADJACENT MONTHS
         function triggerBackgroundAdjacentPrefetch() {
-            setTimeout(async () => {
+            setTimeout(() => {
                 const curYear = currentCalendarDate.getFullYear();
                 const curMonth = currentCalendarDate.getMonth() + 1;
 
-                // 1. Calculate Previous Month
                 let prevYear = curYear;
                 let prevMonth = curMonth - 1;
                 if (prevMonth === 0) { prevMonth = 12; prevYear--; }
 
-                // 2. Calculate Next Month
                 let nextYear = curYear;
                 let nextMonth = curMonth + 1;
                 if (nextMonth === 13) { nextMonth = 1; nextYear++; }
 
-                // Silently prefetch previous month if not already cached
                 fetchMonthDataInBackground(prevYear, prevMonth);
-                
-                // Silently prefetch next month if not already cached
                 fetchMonthDataInBackground(nextYear, nextMonth);
-            }, 1000); // Waits 1s after dashboard load so main thread stays smooth
+            }, 1000);
         }
 
         async function fetchMonthDataInBackground(year, month) {
             const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-            if (monthlyCalendarMap[monthKey]) return; // Already cached!
+            if (monthlyCalendarMap[monthKey]) return;
 
             try {
                 const res = await fetch(`${API_BASE_URL}/api/month-complete-data`, {
@@ -492,7 +567,6 @@ async function autoSyncTodayAttendance() {
                         Object.assign(dailyClassesCache, batchData.dailyBundle);
                     }
 
-                    // Save pre-fetched results silently to localStorage
                     localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
                     localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
                 }
@@ -501,18 +575,50 @@ async function autoSyncTodayAttendance() {
             }
         }
 
-        async function forceSyncRefresh() {
-            const btn = document.getElementById('refresh-btn');
-            btn.classList.add('spinning');
+        // INDEPENDENT TODAY & TOMORROW HOLIDAY CHECK (0ms Latency)
+        function checkHolidayBannersLocally() {
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
 
-            dailyClassesCache = {};
-            monthlyCalendarMap = {};
+            const formatKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-            await loginAndFetch(cachedCredentials.loginId, cachedCredentials.password);
+            const todayKey = formatKey(today);
+            const tomorrowKey = formatKey(tomorrow);
 
-            setTimeout(() => {
-                btn.classList.remove('spinning');
-            }, 600);
+            const todayBundle = dailyClassesCache[todayKey];
+            const tomorrowBundle = dailyClassesCache[tomorrowKey];
+
+            const todayBanner = document.getElementById('today-holiday-banner');
+            const tomorrowBanner = document.getElementById('tomorrow-holiday-banner');
+
+            // 1. Check Today
+            if (todayBundle) {
+                const tt = todayBundle.timetable || [];
+                const att = todayBundle.attendance || [];
+                if (tt.length === 0 && att.length === 0) {
+                    document.getElementById('today-holiday-text').innerHTML = `🎉 <strong>Today's Announcement (${todayKey}):</strong> Today is a Holiday / No Scheduled Classes!`;
+                    todayBanner.style.display = 'flex';
+                } else {
+                    todayBanner.style.display = 'none';
+                }
+            } else {
+                todayBanner.style.display = 'none';
+            }
+
+            // 2. Check Tomorrow
+            if (tomorrowBundle) {
+                const tt = tomorrowBundle.timetable || [];
+                const att = tomorrowBundle.attendance || [];
+                if (tt.length === 0 && att.length === 0) {
+                    document.getElementById('tomorrow-holiday-text').innerHTML = `🎉 <strong>Tomorrow's Announcement (${tomorrowKey}):</strong> Tomorrow is a Holiday / No Scheduled Classes!`;
+                    tomorrowBanner.style.display = 'flex';
+                } else {
+                    tomorrowBanner.style.display = 'none';
+                }
+            } else {
+                tomorrowBanner.style.display = 'none';
+            }
         }
 
         function renderDashboard(data) {
@@ -523,11 +629,18 @@ async function autoSyncTodayAttendance() {
             document.getElementById('disp-roll').textContent = officialRoll;
             document.getElementById('prof-roll').textContent = officialRoll;
 
-            document.getElementById('prof-name').textContent = student.fullName || "Student Name";
+            document.getElementById('prof-name').textContent = (student.fullName || "MITHRA TEJ VARMA NANDIMANDALAM").toUpperCase();
             document.getElementById('prof-email').textContent = student.email || cachedCredentials.loginId;
-            document.getElementById('prof-gender').textContent = (student.gender || "Male").toUpperCase();
+            document.getElementById('prof-gender').textContent = (student.gender || "MALE").toUpperCase();
             document.getElementById('prof-sem').textContent = student.semNo || studentContext.semNo;
-            document.getElementById('prof-branch').textContent = `${student.branchCode || 'CSE'} (${classroom.name || 'Section B'})`;
+
+            // CLEAN BRANCH & SECTION DISPLAY ("CSE - Section B")
+            const cleanBranch = student.branchCode || 'CSE';
+            let cleanSection = 'B';
+            if (classroom.name) {
+                cleanSection = classroom.name.replace(/^(CSE|ECE|EEE|MECH|CIVIL)\s*-\s*/i, '').trim();
+            }
+            document.getElementById('prof-branch').textContent = `${cleanBranch} - Section ${cleanSection}`;
 
             document.getElementById('disp-sem-badge').textContent = `Semester ${studentContext.semNo}`;
 
@@ -638,7 +751,6 @@ async function autoSyncTodayAttendance() {
             const month = currentCalendarDate.getMonth() + 1;
             const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
-            // Check if month data is already pre-fetched
             if (!monthlyCalendarMap[monthKey]) {
                 try {
                     const res = await fetch(`${API_BASE_URL}/api/month-complete-data`, {
@@ -666,10 +778,7 @@ async function autoSyncTodayAttendance() {
                     console.error("Failed month map sync");
                 }
             }
-            
             renderCalendarGrid();
-            
-            // Trigger prefetch for new surrounding months
             triggerBackgroundAdjacentPrefetch();
         }
 
@@ -682,6 +791,7 @@ async function autoSyncTodayAttendance() {
             renderModalPeriods(payload);
         }
 
+        // ORIGINAL UNBROKEN OVERLAY FUNCTION WITH SHINING GOLD 12-HR BADGES
         function renderModalPeriods(payload) {
             const listEl = document.getElementById('modal-period-list');
             const bannerEl = document.getElementById('no-record-container');
@@ -692,6 +802,7 @@ async function autoSyncTodayAttendance() {
             const timetable = payload.timetable || [];
             const attendanceLogs = payload.attendance || payload.data || [];
 
+            // 1. MASTER TIMETABLE SLOTS AVAILABLE
             if (Array.isArray(timetable) && timetable.length > 0) {
                 if (!hasRecord) {
                     bannerEl.innerHTML = `<div class="no-record-banner">⚠️ Attendance Not Posted Yet — Showing Timetable</div>`;
@@ -706,7 +817,11 @@ async function autoSyncTodayAttendance() {
                 timetable.forEach(slot => {
                     const subjName = slot.subject ? slot.subject.name : (slot.subjectName || "Scheduled Class");
                     const subjCode = slot.subject ? slot.subject.subjectCode : (slot.subjectCode || "");
-                    const timeRange = (slot.fromTime && slot.toTime) ? `${slot.fromTime.substring(0, 5)} - ${slot.toTime.substring(0, 5)}` : "";
+                    
+                    // FORMAT TIME TO 12-HOUR AM/PM
+                    const rawTimeRange = (slot.fromTime && slot.toTime) ? `${slot.fromTime.substring(0, 5)} - ${slot.toTime.substring(0, 5)}` : "";
+                    const timeRange12 = formatRangeTo12Hour(slot.fromTime, slot.toTime) || formatRawString12Hour(rawTimeRange);
+                    
                     const faculty = (slot.faculties && slot.faculties.length > 0) ? slot.faculties[0].fullName : "";
                     const slotSubjId = slot.subjectId || (slot.subject ? slot.subject.id : null);
 
@@ -721,7 +836,7 @@ async function autoSyncTodayAttendance() {
                                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
                                         ${subjCode} ${faculty ? '• ' + faculty : ''}
                                     </div>
-                                    ${timeRange ? `<div class="period-time-badge">⏱ ${timeRange}</div>` : ''}
+                                    ${timeRange12 ? `<div class="period-time-badge">⏱ ${timeRange12}</div>` : ''}
                                 </div>
                                 <span class="${isPresent ? 'badge-p' : 'badge-a'}">
                                     ${isPresent ? 'PRESENT' : 'ABSENT'}
@@ -737,7 +852,7 @@ async function autoSyncTodayAttendance() {
                                         ${subjCode} ${faculty ? '• ' + faculty : ''}
                                     </div>
                                 </div>
-                                <span class="badge-tt">${timeRange || 'Scheduled'}</span>
+                                <span class="badge-tt">⏱ ${timeRange12 || 'Scheduled'}</span>
                             </div>
                         `;
                     }
@@ -745,6 +860,7 @@ async function autoSyncTodayAttendance() {
                 return;
             }
 
+            // 2. RAW ATTENDANCE LOGS FALLBACK
             if (Array.isArray(attendanceLogs) && attendanceLogs.length > 0) {
                 attendanceLogs.forEach(rec => {
                     const isPresent = rec.isAbsent === 0;
@@ -752,10 +868,10 @@ async function autoSyncTodayAttendance() {
                     const subjCode = rec.subjectCode || rec.refCode || "";
                     
                     let timeStr = "";
-                    if (rec.timeRange) {
-                        timeStr = rec.timeRange;
-                    } else if (rec.fromTime && rec.toTime) {
-                        timeStr = `${rec.fromTime.substring(0, 5)} - ${rec.toTime.substring(0, 5)}`;
+                    if (rec.fromTime && rec.toTime) {
+                        timeStr = formatRangeTo12Hour(rec.fromTime, rec.toTime);
+                    } else if (rec.timeRange) {
+                        timeStr = formatRawString12Hour(rec.timeRange);
                     }
 
                     listEl.innerHTML += `
@@ -774,10 +890,20 @@ async function autoSyncTodayAttendance() {
                 return;
             }
 
+            // 3. EMPTY (HOLIDAY / OFF-DAY)
             listEl.innerHTML = "<div style='color: var(--text-muted); padding: 10px; text-align: center;'>No scheduled classes or records for this day (Holiday/Off-day).</div>";
         }
 
         function closeModal() { document.getElementById('class-modal').style.display = 'none'; }
+
+        function forceSyncRefresh() {
+            const btn = document.getElementById('refresh-btn');
+            btn.classList.add('spinning');
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
+            loginAndFetch(cachedCredentials.loginId, cachedCredentials.password);
+            setTimeout(() => { btn.classList.remove('spinning'); }, 600);
+        }
 
         function signOut() {
             deleteCookie("campx_loginId");
