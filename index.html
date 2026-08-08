@@ -296,43 +296,102 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
-            const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
+    const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
+    const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
 
-            const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
-            const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
-            const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
+    const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
+    const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
+    const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
 
-            if (sessionStorage.getItem("hint_dismissed") === "true") {
-                const hint = document.getElementById('hint-banner');
-                if (hint) hint.style.display = "none";
+    if (sessionStorage.getItem("hint_dismissed") === "true") {
+        const hint = document.getElementById('hint-banner');
+        if (hint) hint.style.display = "none";
+    }
+
+    if (savedEmail && savedPassword) {
+        cachedCredentials = { loginId: savedEmail, password: savedPassword };
+        document.getElementById('loginId').value = savedEmail;
+        document.getElementById('password').value = savedPassword;
+
+        if (cachedDashboardData) {
+            try {
+                const parsedData = JSON.parse(cachedDashboardData);
+                if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
+                
+                if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
+                if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
+
+                // 1. RENDER INSTANTLY FROM CACHE
+                renderDashboard(parsedData);
+
+                // 2. TRIGGER SILENT AUTO-SYNC FOR TODAY'S ATTENDANCE IN BACKGROUND!
+                autoSyncTodayAttendance();
+
+                // 3. Trigger adjacent month prefetch
+                triggerBackgroundAdjacentPrefetch();
+            } catch (e) {
+                loginAndFetch(savedEmail, savedPassword);
             }
+        } else {
+            loginAndFetch(savedEmail, savedPassword);
+        }
+    }
+});
 
-            if (savedEmail && savedPassword) {
-                cachedCredentials = { loginId: savedEmail, password: savedPassword };
-                document.getElementById('loginId').value = savedEmail;
-                document.getElementById('password').value = savedPassword;
+// AUTOMATED TODAY'S ATTENDANCE BACKGROUND SYNC
+async function autoSyncTodayAttendance() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const dayStr = String(today.getDate()).padStart(2, '0');
+    const monthStr = String(month).padStart(2, '0');
+    const todayDateStr = `${year}-${monthStr}-${dayStr}`;
 
-                if (cachedDashboardData) {
-                    try {
-                        const parsedData = JSON.parse(cachedDashboardData);
-                        if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
-                        
-                        if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
-                        if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
-
-                        renderDashboard(parsedData);
-
-                        // Trigger Background Prefetch for Previous & Next Months
-                        triggerBackgroundAdjacentPrefetch();
-                    } catch (e) {
-                        loginAndFetch(savedEmail, savedPassword);
-                    }
-                } else {
-                    loginAndFetch(savedEmail, savedPassword);
-                }
-            }
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/today-sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                loginId: cachedCredentials.loginId,
+                password: cachedCredentials.password,
+                classroomId: studentContext.classroomId,
+                semNo: studentContext.semNo,
+                date: todayDateStr,
+                month: month,
+                year: year
+            })
         });
+
+        if (!res.ok) return;
+        const syncData = await res.json();
+
+        // Update Today's Schedule Cache
+        dailyClassesCache[todayDateStr] = syncData.todayBundle;
+
+        // Update Month Calendar Map
+        const monthKey = `${year}-${monthStr}`;
+        if (syncData.monthlyCalendar) {
+            monthlyCalendarMap[monthKey] = syncData.monthlyCalendar;
+        }
+
+        // Update Primary Dashboard Payload
+        const cachedDashboard = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+        cachedDashboard.primary = syncData.primary;
+        cachedDashboard.subjectWise = syncData.subjectWise;
+        cachedDashboard.monthlyCalendar = syncData.monthlyCalendar;
+
+        // Save fresh updates back to localStorage
+        localStorage.setItem("campx_dashboard_cache", JSON.stringify(cachedDashboard));
+        localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+        localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+
+        // Smoothly re-render UI components with fresh today stats!
+        renderDashboard(cachedDashboard);
+
+    } catch (err) {
+        console.log("Background today auto-sync skipped (offline or network error)");
+    }
+}
 
         async function loginAndFetch(optLoginId, optPassword) {
             const loginId = optLoginId || document.getElementById('loginId').value;
