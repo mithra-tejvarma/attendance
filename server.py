@@ -7,6 +7,11 @@ import calendar
 
 app = FastAPI()
 
+@app.get("/")
+def health_check():
+    """Lightweight endpoint specifically for cron-job.org ping checks."""
+    return {"status": "ok", "message": "Server is awake"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
