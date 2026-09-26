@@ -194,6 +194,312 @@
         .btn-signout { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 20px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; }
 
         .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        /* ===== ATTENDANCE PLAYGROUND FAB (COLLAPSED ARROW < TO EXPANDED SEMICIRCLE 🎮) ===== */
+        .pg-fab-container {
+            position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+            z-index: 150; user-select: none; touch-action: none;
+        }
+
+        /* Collapsed minimal arrow tab (<) - NO GLOW */
+        .pg-fab-collapsed {
+            width: 22px; height: 44px;
+            background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border); border-right: none;
+            border-radius: 18px 0 0 18px; color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 15px; font-weight: 800;
+            transition: all 0.25s ease; box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+        }
+        .pg-fab-collapsed:hover {
+            width: 28px; color: var(--primary-light); border-color: var(--primary);
+            background: rgba(31, 41, 55, 0.98);
+        }
+
+        /* Expanded semicircle badge with 🎮 icon */
+        .pg-fab-expanded {
+            display: none; width: 50px; height: 52px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.95) 100%);
+            border: 1.5px solid var(--primary-light); border-right: none;
+            border-radius: 28px 0 0 28px; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: -4px 0 18px rgba(99, 102, 241, 0.35);
+            position: relative; animation: slideInFab 0.2s ease-out;
+        }
+        @keyframes slideInFab { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .pg-fab-expanded:hover { width: 56px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        .pg-fab-icon { font-size: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .pg-fab-close {
+            position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: rgba(255,255,255,0.7);
+            font-size: 12px; font-weight: 800; cursor: pointer; padding: 2px;
+        }
+
+        #playground-view {
+            position: fixed; inset: 0; background: rgba(9, 13, 22, 0.97); backdrop-filter: blur(12px);
+            z-index: 200; overflow-y: auto; padding: 16px; opacity: 0; transform: scale(0.97) translateY(15px);
+            pointer-events: none; transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: block !important;
+        }
+        #playground-view.open {
+            opacity: 1; transform: scale(1) translateY(0); pointer-events: auto;
+        }
+
+        .pg-inner { max-width: 520px; margin: 0 auto; }
+
+        .pg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .pg-header-left { display: flex; align-items: center; gap: 12px; }
+        .pg-back-btn {
+            background: var(--surface); border: 1px solid var(--border); color: var(--text);
+            width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; font-size: 18px; transition: all 0.2s; flex-shrink: 0;
+        }
+        .pg-back-btn:hover { border-color: var(--primary); color: var(--primary-light); }
+        .pg-title { font-size: 18px; font-weight: 800; color: var(--text); }
+
+        .pg-info-btn {
+            background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35);
+            color: var(--primary-light); padding: 6px 12px; border-radius: 10px;
+            font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .pg-info-btn:hover { background: rgba(99, 102, 241, 0.3); border-color: var(--primary); }
+
+        /* ACTION MODE GUIDED DEMO BANNER */
+        .pg-action-guide-banner {
+            position: sticky; top: 0; z-index: 280;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.92) 0%, rgba(139, 92, 246, 0.92) 100%);
+            border: 1px solid var(--primary-light); border-radius: 12px;
+            padding: 10px 14px; margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35); animation: pulseBanner 2s infinite ease-in-out;
+        }
+        @keyframes pulseBanner { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
+        .pg-action-guide-text { font-size: 12px; font-weight: 700; color: white; line-height: 1.4; }
+        .pg-action-guide-next {
+            background: white; color: var(--primary); border: none; border-radius: 8px;
+            padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .pg-action-guide-next:hover { background: #f0f0ff; transform: scale(1.04); }
+
+        /* CAMPX REFLECTION DISCLAIMER MODAL */
+        .pg-disclaimer-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px);
+            z-index: 380; display: flex; align-items: center; justify-content: center; padding: 16px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        .pg-disclaimer-card {
+            background: var(--surface); border: 1.5px solid var(--partial);
+            border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 420px;
+            text-align: center; box-shadow: 0 12px 40px rgba(245, 158, 11, 0.25);
+            animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pg-disclaimer-icon { font-size: 38px; margin-bottom: 8px; }
+        .pg-disclaimer-card h3 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+        .pg-disclaimer-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; text-align: left; }
+        .pg-tut-next:hover { background: var(--primary-light); }
+
+        .pg-hint {
+            background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 12px; color: var(--primary-light); font-weight: 500; text-align: center; line-height: 1.5;
+        }
+
+        .pg-results-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 16px; margin-bottom: 14px;
+        }
+        .pg-result-main {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .pg-result-label {
+            font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+            font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px;
+        }
+        .pg-projected-pct { font-size: 38px; font-weight: 900; transition: color 0.3s; }
+
+        .pg-status-badge {
+            padding: 7px 14px; border-radius: 20px; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .pg-status-safe { background: rgba(16, 185, 129, 0.15); color: var(--present); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .pg-status-risky { background: rgba(245, 158, 11, 0.15); color: var(--partial); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .pg-status-danger { background: rgba(239, 68, 68, 0.15); color: var(--absent); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .pg-progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+        .pg-progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease, background-color 0.3s; }
+
+        .pg-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .pg-stat-item { background: var(--bg); padding: 8px 6px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+        .pg-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+        .pg-stat-value { font-size: 14px; font-weight: 800; color: var(--text); }
+
+        .pg-danger-msg {
+            background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 12px; color: var(--absent); font-weight: 600; text-align: center;
+            display: none; line-height: 1.5;
+        }
+
+        .pg-legend {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+            padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+        }
+        .pg-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .pg-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+        .pg-calendar-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; margin-bottom: 14px;
+        }
+        .pg-cal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        .pg-cal-title { font-size: 15px; font-weight: 700; color: var(--text); }
+
+        .pg-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+
+        .pg-cal-date {
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--bg); font-size: 12px; font-weight: 600;
+            border: 1.5px solid transparent; transition: all 0.2s ease; position: relative; user-select: none;
+        }
+
+        .pg-cal-date.past-present { background: rgba(16, 185, 129, 0.12); color: var(--present); border-color: rgba(16, 185, 129, 0.15); opacity: 0.6; }
+        .pg-cal-date.past-absent { background: rgba(239, 68, 68, 0.12); color: var(--absent); border-color: rgba(239, 68, 68, 0.15); opacity: 0.6; }
+        .pg-cal-date.past-partial { background: rgba(245, 158, 11, 0.12); color: var(--partial); border-color: rgba(245, 158, 11, 0.15); opacity: 0.6; }
+        .pg-cal-date.today-marker { border-color: var(--primary) !important; box-shadow: 0 0 10px rgba(99, 102, 241, 0.35); opacity: 1; }
+
+        .pg-cal-date.future-present {
+            background: rgba(16, 185, 129, 0.2); color: var(--present);
+            border-color: rgba(16, 185, 129, 0.4); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-present:hover { background: rgba(16, 185, 129, 0.32); transform: scale(1.08); }
+        .pg-cal-date.future-present:active { transform: scale(0.95); }
+
+        .pg-cal-date.future-absent {
+            background: rgba(239, 68, 68, 0.25); color: var(--absent);
+            border-color: rgba(239, 68, 68, 0.5); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-absent:hover { background: rgba(239, 68, 68, 0.4); transform: scale(1.08); }
+        .pg-cal-date.future-absent:active { transform: scale(0.95); }
+
+        .pg-cal-date.no-classes { opacity: 0.25; cursor: default; }
+
+        .pg-class-count { font-size: 7px; opacity: 0.75; margin-top: 1px; letter-spacing: 0.3px; }
+
+        .pg-footer-actions { display: flex; gap: 8px; margin-bottom: 20px; }
+        .pg-reset-btn {
+            flex: 1; padding: 12px; background: var(--surface); border: 1px solid var(--border);
+            color: var(--text-muted); border-radius: 12px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .pg-reset-btn:hover { border-color: var(--primary); color: var(--text); }
+
+        /* PLAYGROUND SUBJECT BREAKDOWN */
+        .pg-subjects-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; margin-bottom: 14px;
+        }
+        .pg-subjects-header {
+            font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px;
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .pg-subjects-header span:last-child { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .pg-subject-list { display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; padding-right: 4px; }
+        .pg-subject-row {
+            display: grid; grid-template-columns: 1.3fr 1fr 48px 50px; align-items: center; gap: 6px;
+            padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        .pg-subject-row.pg-subj-danger { border-color: rgba(239, 68, 68, 0.3); }
+        .pg-subject-row.pg-subj-risky { border-color: rgba(245, 158, 11, 0.3); }
+        .pg-subj-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pg-subj-bar-wrap { width: 100%; height: 7px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+        .pg-subj-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+        .pg-subj-pct {
+            font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 6px; text-align: center;
+        }
+        .pg-subj-count { font-size: 10px; color: var(--text-muted); font-weight: 600; text-align: right; white-space: nowrap; }
+
+        /* PLAYGROUND MODE TOGGLE */
+        .pg-mode-toggle {
+            display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border); background: var(--bg);
+        }
+        .pg-mode-radio { display: none; }
+        .pg-mode-label {
+            padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+            color: var(--text-muted); transition: all 0.2s; text-align: center;
+            border-right: 1px solid var(--border); white-space: nowrap;
+        }
+        .pg-mode-label:last-of-type { border-right: none; }
+        .pg-mode-radio:checked + .pg-mode-label {
+            background: var(--primary); color: white;
+        }
+
+        /* CLASS-WISE MODAL */
+        .pg-classwise-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px); justify-content: center; align-items: center;
+            padding: 16px; z-index: 300;
+        }
+        .pg-cw-card {
+            background: var(--surface); border: 1px solid var(--border);
+            width: 100%; max-width: 420px; border-radius: 16px; padding: 18px;
+            max-height: 85vh; overflow-y: auto; animation: pgSlideIn 0.25s ease-out;
+        }
+        .pg-cw-header {
+            font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 4px;
+        }
+        .pg-cw-subtitle {
+            font-size: 11px; color: var(--text-muted); margin-bottom: 14px;
+        }
+        .pg-cw-slot-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .pg-cw-slot {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 12px; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; transition: border-color 0.2s;
+        }
+        .pg-cw-slot.cw-slot-absent { border-color: rgba(239, 68, 68, 0.35); }
+        .pg-cw-slot-info { flex: 1; min-width: 0; }
+        .pg-cw-slot-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pg-cw-slot-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .pg-cw-slot-time { font-size: 10px; color: var(--gold); font-weight: 700; margin-top: 3px; }
+        .pg-cw-toggle-btn {
+            padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800;
+            cursor: pointer; border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
+            flex-shrink: 0; margin-left: 10px;
+        }
+        .pg-cw-toggle-btn.cw-present {
+            background: rgba(16, 185, 129, 0.2); color: var(--present); border-color: rgba(16, 185, 129, 0.35);
+        }
+        .pg-cw-toggle-btn.cw-absent {
+            background: rgba(239, 68, 68, 0.2); color: var(--absent); border-color: rgba(239, 68, 68, 0.35);
+        }
+        .pg-cw-toggle-btn:hover { transform: scale(1.05); }
+        .pg-cw-actions { display: flex; gap: 8px; }
+        .pg-cw-done-btn {
+            flex: 1; padding: 11px; background: var(--primary); color: white;
+            border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+        .pg-cw-allbtn {
+            padding: 11px 14px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text-muted); border-radius: 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pg-cw-allbtn:hover { border-color: var(--primary); color: var(--text); }
+
+        .pg-cal-date.future-mixed {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+            color: var(--partial); border-color: rgba(245, 158, 11, 0.4); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-mixed:hover { transform: scale(1.08); }
+        .pg-cal-date.future-mixed:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -264,6 +570,19 @@
                 <button class="hint-close-btn" onclick="dismissHint()">✕</button>
             </div>
 
+            <!-- 2-STEP FLOATING ARROW < TO EXPANDED 🎮 SEMICIRCLE -->
+            <div class="pg-fab-container" id="pg-fab-container">
+                <!-- Step 1: Collapsed minimal tab showing < arrow (No glow) -->
+                <div class="pg-fab-collapsed" id="pg-fab-collapsed" onclick="expandFabBadge()" title="Open Attendance Playground Tab">
+                    ‹
+                </div>
+                <!-- Step 2: Expanded semicircle badge showing 🎮 icon -->
+                <div class="pg-fab-expanded" id="pg-fab-expanded" onclick="openPlayground()" title="Tap to launch Attendance Playground">
+                    <button class="pg-fab-close" onclick="collapseFabBadge(event)" title="Retract Tab">›</button>
+                    <span class="pg-fab-icon">🎮</span>
+                </div>
+            </div>
+
             <div class="top-metrics-grid">
                 <div class="metric-card"><div class="metric-label">Final Attd</div><div class="metric-value" id="disp-final" style="color: var(--present);">0%</div></div>
                 <div class="metric-card"><div class="metric-label">Class Avg</div><div class="metric-value" id="disp-avg">0%</div></div>
@@ -306,6 +625,135 @@
             <div id="no-record-container"></div>
             <div class="period-list" id="modal-period-list"></div>
             <button class="btn-primary" style="margin-top: 14px;" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- ATTENDANCE PLAYGROUND OVERLAY -->
+    <div id="playground-view">
+        <div class="pg-inner">
+            <!-- ACTION MODE GUIDED DEMO BANNER -->
+            <div class="pg-action-guide-banner" id="pg-action-banner" style="display: none;">
+                <div class="pg-action-guide-text" id="pg-action-text">Action Prompt</div>
+                <button class="pg-action-guide-next" id="pg-action-btn" onclick="nextActionStep()">Next Step →</button>
+            </div>
+
+            <div class="pg-header">
+                <div class="pg-header-left">
+                    <button class="pg-back-btn" onclick="closePlayground()">←</button>
+                    <div class="pg-title">🎮 Attendance Playground</div>
+                </div>
+                <button class="pg-info-btn" onclick="startPlaygroundTutorial()" title="Replay Guided Tour">ℹ️ Action Tour</button>
+            </div>
+
+            <div class="pg-hint">
+                Tap future dates to toggle <strong>Present ↔ Absent</strong>.<br>
+                All unmarked future dates count as <strong>Present</strong>. Calculated per class session.
+            </div>
+
+            <div class="pg-results-panel">
+                <div class="pg-result-main">
+                    <div>
+                        <div class="pg-result-label">Projected Attendance</div>
+                        <div class="pg-projected-pct" id="pg-projected-pct">0%</div>
+                    </div>
+                    <div class="pg-status-badge pg-status-safe" id="pg-status-badge">✅ SAFE</div>
+                </div>
+                <div class="pg-progress-bar">
+                    <div class="pg-progress-fill" id="pg-progress-fill"></div>
+                </div>
+                <div class="pg-stats-row">
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">Current %</div>
+                        <div class="pg-stat-value" id="pg-current-pct">0%</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">+Present</div>
+                        <div class="pg-stat-value" id="pg-future-present" style="color: var(--present);">0</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">+Absent</div>
+                        <div class="pg-stat-value" id="pg-future-absent" style="color: var(--absent);">0</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">Sem End</div>
+                        <div class="pg-stat-value" id="pg-sem-end">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pg-danger-msg" id="pg-danger-msg">
+                🚨 <strong>WARNING:</strong> Your attendance will drop below 75%! Do NOT skip these classes.
+            </div>
+
+            <div class="pg-legend">
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--present); opacity: 0.5;"></div>Past P</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--absent); opacity: 0.5;"></div>Past A</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--present);"></div>Future P</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--absent);"></div>Future A</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: rgba(255,255,255,0.08);"></div>No Class</div>
+            </div>
+
+            <div class="pg-calendar-panel">
+                <div class="pg-cal-header">
+                    <span class="pg-cal-title" id="pg-cal-title">Calendar</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="pg-mode-toggle">
+                            <input type="radio" name="pgMode" id="pgModeDaywise" class="pg-mode-radio" value="daywise" checked onchange="switchPgMode('daywise')">
+                            <label for="pgModeDaywise" class="pg-mode-label">Day-wise</label>
+                            <input type="radio" name="pgMode" id="pgModeClasswise" class="pg-mode-radio" value="classwise" onchange="switchPgMode('classwise')">
+                            <label for="pgModeClasswise" class="pg-mode-label">Class-wise</label>
+                        </div>
+                        <div class="calendar-nav">
+                            <button class="cal-nav-btn" onclick="changePgMonth(-1)">←</button>
+                            <button class="cal-nav-btn" onclick="changePgMonth(1)">→</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="pg-cal-grid" id="pg-calendar-container"></div>
+            </div>
+
+            <div class="pg-subjects-panel">
+                <div class="pg-subjects-header">
+                    <span>📊 Subject-Wise Projection</span>
+                    <span>Projected P / Total</span>
+                </div>
+                <div class="pg-subject-list" id="pg-subject-container"></div>
+            </div>
+
+            <div class="pg-footer-actions">
+                <button class="pg-reset-btn" onclick="resetPlayground()">🔄 Reset All to Present</button>
+                <button class="pg-reset-btn" onclick="closePlayground()">← Back to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLASS-WISE SELECTION MODAL -->
+    <div class="pg-classwise-modal" id="pg-cw-modal">
+        <div class="pg-cw-card">
+            <div class="pg-cw-header" id="pg-cw-date-title">Select Classes</div>
+            <div class="pg-cw-subtitle">Tap each class to toggle Present ↔ Absent individually</div>
+            <div class="pg-cw-slot-list" id="pg-cw-slot-list"></div>
+            <div class="pg-cw-actions">
+                <button class="pg-cw-allbtn" onclick="cwMarkAll('present')">All Present</button>
+                <button class="pg-cw-allbtn" onclick="cwMarkAll('absent')">All Absent</button>
+                <button class="pg-cw-done-btn" onclick="closeCwModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAMPX REFLECTION CAUTION DISCLAIMER MODAL -->
+    <div class="pg-disclaimer-overlay" id="pg-disclaimer-overlay" style="display: none;">
+        <div class="pg-disclaimer-card">
+            <div class="pg-disclaimer-icon">⚠️</div>
+            <h3>Official CampX Live Sync Disclaimer</h3>
+            <p>
+                This attendance portal and calendar are a <strong>direct live reflection of official CampX college data</strong>.
+                <br><br>
+                Any changes posted on CampX—including official college holidays, rescheduled classes, or faculty attendance postings—will automatically reflect here.
+                <br><br>
+                <strong>Important Recommendation:</strong> Always keep your target attendance at <strong>77% or higher</strong> to maintain a safe buffer against any minor attendance calculation mistakes or posting delays!
+            </p>
+            <button class="btn-primary" onclick="acceptDisclaimer()">I Understand & Accept 🚀</button>
         </div>
     </div>
 
@@ -529,16 +977,19 @@
                 const curYear = currentCalendarDate.getFullYear();
                 const curMonth = currentCalendarDate.getMonth() + 1;
 
+                // Fetch previous month
                 let prevYear = curYear;
                 let prevMonth = curMonth - 1;
                 if (prevMonth === 0) { prevMonth = 12; prevYear--; }
-
-                let nextYear = curYear;
-                let nextMonth = curMonth + 1;
-                if (nextMonth === 13) { nextMonth = 1; nextYear++; }
-
                 fetchMonthDataInBackground(prevYear, prevMonth);
-                fetchMonthDataInBackground(nextYear, nextMonth);
+
+                // Fetch next 4 months for Playground semester-end detection
+                for (let offset = 1; offset <= 4; offset++) {
+                    let futYear = curYear;
+                    let futMonth = curMonth + offset;
+                    while (futMonth > 12) { futMonth -= 12; futYear++; }
+                    fetchMonthDataInBackground(futYear, futMonth);
+                }
             }, 1000);
         }
 
@@ -916,6 +1367,570 @@
             document.getElementById('password').value = "";
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('login-view').style.display = 'block';
+        }
+
+        // ===== ATTENDANCE PLAYGROUND — WHAT-IF SIMULATOR =====
+        let playgroundClassToggles = {};  // single source of truth: dateStr -> { slotIndex: 'present'|'absent' }
+        let pgCalendarDate = null;
+        let pgSemesterEndDate = null;
+        let pgMode = 'daywise';  // 'daywise' or 'classwise'
+        let pgCwCurrentDate = null;  // currently open class-wise modal date
+
+        function pgFormatDateKey(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function detectSemesterEndDate() {
+            let lastDate = null;
+            for (const dateStr in dailyClassesCache) {
+                const bundle = dailyClassesCache[dateStr];
+                if (bundle && bundle.timetable && bundle.timetable.length > 0) {
+                    const parts = dateStr.split('-');
+                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    if (!lastDate || d > lastDate) {
+                        lastDate = d;
+                    }
+                }
+            }
+            return lastDate;
+        }
+
+        function getFutureDatesWithClasses() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const futureDates = {};
+            for (const dateStr in dailyClassesCache) {
+                const parts = dateStr.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                if (d > today) {
+                    const bundle = dailyClassesCache[dateStr];
+                    const classCount = (bundle && bundle.timetable) ? bundle.timetable.length : 0;
+                    if (classCount > 0) {
+                        futureDates[dateStr] = classCount;
+                    }
+                }
+            }
+            return futureDates;
+        }
+
+        function expandFabBadge() {
+            document.getElementById('pg-fab-collapsed').style.display = 'none';
+            const exp = document.getElementById('pg-fab-expanded');
+            exp.style.display = 'flex';
+        }
+
+        function collapseFabBadge(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('pg-fab-expanded').style.display = 'none';
+            document.getElementById('pg-fab-collapsed').style.display = 'flex';
+        }
+
+        function openPlayground() {
+            playgroundClassToggles = {};
+            pgMode = 'daywise';
+            document.getElementById('pgModeDaywise').checked = true;
+            pgSemesterEndDate = detectSemesterEndDate();
+
+            const now = new Date();
+            pgCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const dashData = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+            const overallPct = parseFloat(
+                (dashData.subjectWise && dashData.subjectWise.overallAttendance) ||
+                (dashData.primary && dashData.primary.attendancePercentage) || 0
+            ).toFixed(1);
+            document.getElementById('pg-current-pct').textContent = overallPct + '%';
+
+            if (pgSemesterEndDate) {
+                const endDay = pgSemesterEndDate.getDate();
+                const endMon = pgSemesterEndDate.getMonth() + 1;
+                document.getElementById('pg-sem-end').textContent = `${endDay}/${endMon}`;
+            } else {
+                document.getElementById('pg-sem-end').textContent = '—';
+            }
+
+            renderPlaygroundCalendar();
+            recalculateProjection();
+
+            const pgView = document.getElementById('playground-view');
+            pgView.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            if (!localStorage.getItem('pg_tutorial_seen')) {
+                setTimeout(startPlaygroundTutorial, 400);
+            }
+        }
+
+        function closePlayground() {
+            const pgView = document.getElementById('playground-view');
+            pgView.classList.remove('open');
+            document.body.style.overflow = '';
+            document.getElementById('pg-action-banner').style.display = 'none';
+        }
+
+        // ===== ACTION-MODE INTERACTIVE GUIDED TOUR =====
+        let isActionModeTutorial = false;
+        let actionStepIndex = 1;
+
+        const actionStepPrompts = {
+            1: { text: "👉 <b>Action 1:</b> Tap the <b>'Class-wise'</b> or <b>'Day-wise'</b> mode switch above the calendar!", btn: "Skip to Action 2 →" },
+            2: { text: "📅 <b>Action 2:</b> Tap any green future date on the calendar to toggle Present/Absent or customize periods!", btn: "Next Step →" },
+            3: { text: "⚡ <b>Action 3:</b> Watch your projected attendance meter & status badge update live! (🟢≥77% Safe, 🟡75-77% Risky, 🔴<75% Danger)", btn: "View Subject Breakdown →" },
+            4: { text: "📊 <b>Action 4:</b> Scroll down to inspect how individual subject counts are affected in real-time!", btn: "Finish & Read Disclaimer →" }
+        };
+
+        function startPlaygroundTutorial() {
+            isActionModeTutorial = true;
+            actionStepIndex = 1;
+            renderActionStep();
+            document.getElementById('pg-action-banner').style.display = 'flex';
+        }
+
+        function renderActionStep() {
+            const data = actionStepPrompts[actionStepIndex];
+            if (!data) return showCampXDisclaimer();
+            document.getElementById('pg-action-text').innerHTML = data.text;
+            document.getElementById('pg-action-btn').textContent = data.btn;
+        }
+
+        function nextActionStep() {
+            if (actionStepIndex < 4) {
+                actionStepIndex++;
+                renderActionStep();
+            } else {
+                document.getElementById('pg-action-banner').style.display = 'none';
+                showCampXDisclaimer();
+            }
+        }
+
+        function triggerUserActionProgress(completedStep) {
+            if (isActionModeTutorial && actionStepIndex === completedStep) {
+                nextActionStep();
+            }
+        }
+
+        function showCampXDisclaimer() {
+            document.getElementById('pg-action-banner').style.display = 'none';
+            document.getElementById('pg-disclaimer-overlay').style.display = 'flex';
+        }
+
+        function acceptDisclaimer() {
+            document.getElementById('pg-disclaimer-overlay').style.display = 'none';
+            localStorage.setItem('pg_tutorial_seen', 'true');
+            isActionModeTutorial = false;
+        }
+
+        // ===== FLOATING FAB DRAG & TAP LOGIC =====
+        (function initFabDrag() {
+            const fabContainer = document.getElementById('pg-fab-container');
+            if (!fabContainer) return;
+
+            let isDragging = false;
+            let startY = 0;
+            let startTop = 0;
+            let hasMoved = false;
+
+            function onPointerDown(e) {
+                isDragging = true;
+                hasMoved = false;
+                startY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                const rect = fabContainer.getBoundingClientRect();
+                startTop = rect.top + rect.height / 2;
+                fabContainer.style.transition = 'none';
+            }
+
+            function onPointerMove(e) {
+                if (!isDragging) return;
+                const currentY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                const deltaY = currentY - startY;
+
+                if (Math.abs(deltaY) > 5) {
+                    hasMoved = true;
+                    let newTop = startTop + deltaY;
+                    const minTop = 40;
+                    const maxTop = window.innerHeight - 40;
+                    newTop = Math.max(minTop, Math.min(maxTop, newTop));
+                    fabContainer.style.top = newTop + 'px';
+                    fabContainer.style.transform = 'translateY(-50%)';
+                }
+            }
+
+            function onPointerUp(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                fabContainer.style.transition = 'top 0.2s ease';
+            }
+
+            fabContainer.addEventListener('mousedown', onPointerDown);
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+
+            fabContainer.addEventListener('touchstart', onPointerDown, { passive: true });
+            window.addEventListener('touchmove', onPointerMove, { passive: true });
+            window.addEventListener('touchend', onPointerUp);
+        })();
+
+        function renderPlaygroundCalendar() {
+            const container = document.getElementById('pg-calendar-container');
+            container.innerHTML = '';
+
+            const year = pgCalendarDate.getFullYear();
+            const month = pgCalendarDate.getMonth();
+            const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            document.getElementById('pg-cal-title').textContent = `${monthNames[month]} ${year}`;
+
+            const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            dayLabels.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'cal-day-name';
+                el.textContent = d;
+                container.appendChild(el);
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDayIndex; i++) {
+                container.appendChild(document.createElement('div'));
+            }
+
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = pgFormatDateKey(today);
+            const monthStatusMap = monthlyCalendarMap[monthKey] || {};
+
+            for (let dateNum = 1; dateNum <= totalDays; dateNum++) {
+                const dayStr = String(dateNum).padStart(2, '0');
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+                const dateObj = new Date(year, month, dateNum);
+                const isToday = dateStr === todayStr;
+                const isFuture = dateObj > today;
+                const isPast = !isFuture && !isToday;
+
+                const isBeyondSemEnd = pgSemesterEndDate && dateObj > pgSemesterEndDate;
+
+                const bundle = dailyClassesCache[dateStr];
+                const classCount = (bundle && bundle.timetable) ? bundle.timetable.length : 0;
+                const status = monthStatusMap[dateStr];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = 'pg-cal-date';
+
+                if (isPast || isToday) {
+                    if (status === 'present') dayEl.classList.add('past-present');
+                    else if (status === 'absent') dayEl.classList.add('past-absent');
+                    else if (status === 'partial') dayEl.classList.add('past-partial');
+                    if (isToday) dayEl.classList.add('today-marker');
+                } else if (isFuture && !isBeyondSemEnd) {
+                    if (classCount > 0) {
+                        // Always read from playgroundClassToggles (single source of truth)
+                        const slotToggles = playgroundClassToggles[dateStr] || {};
+                        let pCount = 0, aCount = 0;
+                        for (let si = 0; si < classCount; si++) {
+                            if ((slotToggles[si] || 'present') === 'present') pCount++;
+                            else aCount++;
+                        }
+
+                        if (aCount === 0) dayEl.classList.add('future-present');
+                        else if (pCount === 0) dayEl.classList.add('future-absent');
+                        else dayEl.classList.add('future-mixed');
+
+                        if (pgMode === 'daywise') {
+                            dayEl.onclick = () => toggleFutureDate(dateStr);
+                        } else {
+                            dayEl.onclick = () => openCwModal(dateStr);
+                        }
+                    } else {
+                        dayEl.classList.add('no-classes');
+                    }
+                } else {
+                    dayEl.classList.add('no-classes');
+                }
+
+                let innerHtml = `<span>${dateNum}</span>`;
+                if (isFuture && classCount > 0 && !isBeyondSemEnd) {
+                    const slotToggles = playgroundClassToggles[dateStr] || {};
+                    let aCount = 0;
+                    for (let si = 0; si < classCount; si++) {
+                        if ((slotToggles[si] || 'present') === 'absent') aCount++;
+                    }
+                    if (aCount > 0) {
+                        innerHtml += `<span class="pg-class-count">${aCount}/${classCount}</span>`;
+                    } else {
+                        innerHtml += `<span class="pg-class-count">${classCount}cls</span>`;
+                    }
+                }
+                dayEl.innerHTML = innerHtml;
+                container.appendChild(dayEl);
+            }
+        }
+
+        function toggleFutureDate(dateStr) {
+            // Day-wise: toggle ALL slots for this date together
+            const bundle = dailyClassesCache[dateStr];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+            if (timetable.length === 0) return;
+
+            const currentSlots = playgroundClassToggles[dateStr] || {};
+            // Check if any slot is currently absent
+            let anyAbsent = false;
+            for (let i = 0; i < timetable.length; i++) {
+                if ((currentSlots[i] || 'present') === 'absent') { anyAbsent = true; break; }
+            }
+            // If any are absent, set all to present. Otherwise set all to absent.
+            const newStatus = anyAbsent ? 'present' : 'absent';
+            playgroundClassToggles[dateStr] = {};
+            timetable.forEach((_, idx) => {
+                playgroundClassToggles[dateStr][idx] = newStatus;
+            });
+
+            renderPlaygroundCalendar();
+            recalculateProjection();
+            triggerUserActionProgress(2);
+        }
+
+        function recalculateProjection() {
+            const dashData = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+            const primStats = (dashData.primary && dashData.primary.primaryAttendance) ? dashData.primary.primaryAttendance : {};
+            const subjects = (dashData.subjectWise && dashData.subjectWise.subjects) ? dashData.subjectWise.subjects : [];
+
+            const currentPresent = parseInt(primStats.present || 0);
+            const currentTotal = parseInt(primStats.totalSessionsIncludingActivity || 0);
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Build per-subject future counters
+            const subjFuture = {}; // keyed by subjectName → { present: 0, absent: 0 }
+            subjects.forEach(sub => {
+                subjFuture[sub.subjectName] = { present: 0, absent: 0 };
+            });
+
+            let futurePresent = 0;
+            let futureAbsent = 0;
+
+            for (const dateStr in dailyClassesCache) {
+                const parts = dateStr.split('-');
+                const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                if (dateObj <= today) continue;
+                if (pgSemesterEndDate && dateObj > pgSemesterEndDate) continue;
+
+                const bundle = dailyClassesCache[dateStr];
+                const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+                if (timetable.length === 0) continue;
+
+                // Count each timetable slot and attribute to its subject
+                timetable.forEach((slot, slotIdx) => {
+                    const slotSubjName = slot.subject ? slot.subject.name : (slot.subjectName || null);
+
+                    // Always read from playgroundClassToggles (single source of truth)
+                    const dateSlots = playgroundClassToggles[dateStr] || {};
+                    const slotToggle = dateSlots[slotIdx] || 'present';
+
+                    if (slotToggle === 'present') {
+                        futurePresent++;
+                        if (slotSubjName && subjFuture[slotSubjName]) {
+                            subjFuture[slotSubjName].present++;
+                        }
+                    } else {
+                        futureAbsent++;
+                        if (slotSubjName && subjFuture[slotSubjName]) {
+                            subjFuture[slotSubjName].absent++;
+                        }
+                    }
+                });
+            }
+
+            const projectedPresent = currentPresent + futurePresent;
+            const projectedTotal = currentTotal + futurePresent + futureAbsent;
+            const projectedPct = projectedTotal > 0 ? (projectedPresent / projectedTotal * 100) : 0;
+            const pctDisplay = projectedPct.toFixed(1);
+
+            // Update overall UI
+            const pctEl = document.getElementById('pg-projected-pct');
+            const badgeEl = document.getElementById('pg-status-badge');
+            const fillEl = document.getElementById('pg-progress-fill');
+            const dangerMsg = document.getElementById('pg-danger-msg');
+
+            pctEl.textContent = pctDisplay + '%';
+            fillEl.style.width = Math.min(projectedPct, 100) + '%';
+
+            if (projectedPct >= 77) {
+                pctEl.style.color = 'var(--present)';
+                badgeEl.className = 'pg-status-badge pg-status-safe';
+                badgeEl.textContent = '✅ SAFE';
+                fillEl.style.background = 'var(--present)';
+                dangerMsg.style.display = 'none';
+            } else if (projectedPct >= 75) {
+                pctEl.style.color = 'var(--partial)';
+                badgeEl.className = 'pg-status-badge pg-status-risky';
+                badgeEl.textContent = '⚠️ RISKY ZONE';
+                fillEl.style.background = 'var(--partial)';
+                dangerMsg.style.display = 'block';
+                dangerMsg.innerHTML = '⚠️ <strong>CAUTION:</strong> You\'re in the 75-77% risky zone. Any attendance miscalculation or mistake could push you below 75%. Avoid skipping more classes.';
+                dangerMsg.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                dangerMsg.style.background = 'rgba(245, 158, 11, 0.1)';
+                dangerMsg.style.color = 'var(--partial)';
+            } else {
+                pctEl.style.color = 'var(--absent)';
+                badgeEl.className = 'pg-status-badge pg-status-danger';
+                badgeEl.textContent = '🚨 DANGER';
+                fillEl.style.background = 'var(--absent)';
+                dangerMsg.style.display = 'block';
+                dangerMsg.innerHTML = '🚨 <strong>WARNING:</strong> Your attendance WILL drop below 75%! Do NOT absent for these days. Attend all remaining classes to stay safe.';
+                dangerMsg.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                dangerMsg.style.background = 'rgba(239, 68, 68, 0.1)';
+                dangerMsg.style.color = 'var(--absent)';
+            }
+
+            document.getElementById('pg-future-present').textContent = futurePresent;
+            document.getElementById('pg-future-absent').textContent = futureAbsent;
+
+            // Render per-subject projection breakdown
+            renderSubjectProjection(subjects, subjFuture);
+        }
+
+        function renderSubjectProjection(subjects, subjFuture) {
+            const container = document.getElementById('pg-subject-container');
+            container.innerHTML = '';
+
+            const subjBarColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
+
+            subjects.forEach((sub, idx) => {
+                const sf = subjFuture[sub.subjectName] || { present: 0, absent: 0 };
+
+                const curPresent = parseInt(sub.present || 0);
+                const curTotal = parseInt(sub.numberOfClasses || 0);
+
+                const projPresent = curPresent + sf.present;
+                const projTotal = curTotal + sf.present + sf.absent;
+                const projPct = projTotal > 0 ? (projPresent / projTotal * 100) : 0;
+                const pctRound = projPct.toFixed(1);
+
+                const isSafe = projPct >= 77;
+                const isRisky = projPct >= 75 && projPct < 77;
+                const isDanger = projPct < 75;
+
+                const badgeBg = isDanger ? 'rgba(239, 68, 68, 0.2)' : (isRisky ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)');
+                const badgeColor = isDanger ? 'var(--absent)' : (isRisky ? 'var(--partial)' : 'var(--present)');
+                const barColor = subjBarColors[idx % subjBarColors.length];
+
+                const row = document.createElement('div');
+                row.className = 'pg-subject-row' + (isDanger ? ' pg-subj-danger' : (isRisky ? ' pg-subj-risky' : ''));
+
+                row.innerHTML = `
+                    <div class="pg-subj-name" title="${sub.subjectName}">${sub.subjectName}</div>
+                    <div class="pg-subj-bar-wrap">
+                        <div class="pg-subj-bar-fill" style="width: ${Math.min(projPct, 100)}%; background: ${barColor};"></div>
+                    </div>
+                    <div class="pg-subj-pct" style="background: ${badgeBg}; color: ${badgeColor};">
+                        ${pctRound}%
+                    </div>
+                    <div class="pg-subj-count">
+                        ${projPresent}/${projTotal}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function changePgMonth(offset) {
+            pgCalendarDate.setMonth(pgCalendarDate.getMonth() + offset);
+            renderPlaygroundCalendar();
+        }
+
+        function resetPlayground() {
+            playgroundClassToggles = {};
+            renderPlaygroundCalendar();
+            recalculateProjection();
+        }
+
+        function switchPgMode(mode) {
+            pgMode = mode;
+            renderPlaygroundCalendar();
+            recalculateProjection();
+            triggerUserActionProgress(1);
+        }
+
+        // ===== CLASS-WISE MODAL =====
+        function openCwModal(dateStr) {
+            pgCwCurrentDate = dateStr;
+            const bundle = dailyClassesCache[dateStr];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+
+            document.getElementById('pg-cw-date-title').textContent = `Classes for ${dateStr}`;
+            const listEl = document.getElementById('pg-cw-slot-list');
+            listEl.innerHTML = '';
+
+            if (!playgroundClassToggles[dateStr]) {
+                playgroundClassToggles[dateStr] = {};
+            }
+            const dateSlots = playgroundClassToggles[dateStr];
+
+            timetable.forEach((slot, idx) => {
+                const subjName = slot.subject ? slot.subject.name : (slot.subjectName || 'Scheduled Class');
+                const subjCode = slot.subject ? slot.subject.subjectCode : (slot.subjectCode || '');
+                const faculty = (slot.faculties && slot.faculties.length > 0) ? slot.faculties[0].fullName : '';
+                const timeRange = formatRangeTo12Hour(slot.fromTime, slot.toTime);
+
+                const slotStatus = dateSlots[idx] || 'present';
+                const isAbsent = slotStatus === 'absent';
+
+                const slotEl = document.createElement('div');
+                slotEl.className = 'pg-cw-slot' + (isAbsent ? ' cw-slot-absent' : '');
+                slotEl.id = `pg-cw-slot-${idx}`;
+
+                slotEl.innerHTML = `
+                    <div class="pg-cw-slot-info">
+                        <div class="pg-cw-slot-name">${subjName}</div>
+                        <div class="pg-cw-slot-meta">${subjCode}${faculty ? ' \u2022 ' + faculty : ''}</div>
+                        ${timeRange ? '<div class="pg-cw-slot-time">\u23f1 ' + timeRange + '</div>' : ''}
+                    </div>
+                    <button class="pg-cw-toggle-btn ${isAbsent ? 'cw-absent' : 'cw-present'}" onclick="toggleCwSlot(${idx})">
+                        ${isAbsent ? 'ABSENT' : 'PRESENT'}
+                    </button>
+                `;
+                listEl.appendChild(slotEl);
+            });
+
+            document.getElementById('pg-cw-modal').style.display = 'flex';
+            triggerUserActionProgress(2);
+        }
+
+        function toggleCwSlot(slotIdx) {
+            if (!pgCwCurrentDate) return;
+            if (!playgroundClassToggles[pgCwCurrentDate]) {
+                playgroundClassToggles[pgCwCurrentDate] = {};
+            }
+            const current = playgroundClassToggles[pgCwCurrentDate][slotIdx] || 'present';
+            playgroundClassToggles[pgCwCurrentDate][slotIdx] = (current === 'present') ? 'absent' : 'present';
+
+            // Re-render just this slot in the modal
+            openCwModal(pgCwCurrentDate);
+            recalculateProjection();
+            renderPlaygroundCalendar();
+        }
+
+        function cwMarkAll(status) {
+            if (!pgCwCurrentDate) return;
+            const bundle = dailyClassesCache[pgCwCurrentDate];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+            if (!playgroundClassToggles[pgCwCurrentDate]) {
+                playgroundClassToggles[pgCwCurrentDate] = {};
+            }
+            timetable.forEach((_, idx) => {
+                playgroundClassToggles[pgCwCurrentDate][idx] = status;
+            });
+            openCwModal(pgCwCurrentDate);
+            recalculateProjection();
+            renderPlaygroundCalendar();
+        }
+
+        function closeCwModal() {
+            document.getElementById('pg-cw-modal').style.display = 'none';
+            pgCwCurrentDate = null;
         }
     </script>
 </body>
