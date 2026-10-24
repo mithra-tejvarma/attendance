@@ -26,7 +26,13 @@ import {
   EyeOff,
   LoaderCircle,
 } from "lucide-react";
-import { dayKey, monthKey, type Bundle, type Subject } from "./data";
+import {
+  dayKey,
+  monthKey,
+  type Bundle,
+  type Subject,
+  type Student,
+} from "./data";
 import type { Credentials } from "./api";
 export type InstallEvent = Event & {
   prompt: () => Promise<void>;
@@ -748,7 +754,10 @@ export function Settings({
   theme,
   setTheme,
   demo,
-  studentName,
+  student,
+  loginId,
+  classroom,
+  semester,
   install,
   doInstall,
   signOut,
@@ -756,7 +765,10 @@ export function Settings({
   theme: string;
   setTheme: (s: string) => void;
   demo: boolean;
-  studentName?: string;
+  student?: Student;
+  loginId?: string;
+  classroom?: string;
+  semester?: string | number;
   install: InstallEvent | null;
   doInstall: () => void;
   signOut: () => void;
@@ -788,7 +800,7 @@ export function Settings({
         <SectionTitle kicker="YOUR WORKSPACE" title="Account" />
         <div className="setting-row">
           <div>
-            <strong>{studentName || "Connected student"}</strong>
+            <strong>{student?.fullName || "Connected student"}</strong>
             <p>
               {demo
                 ? "Sample workspace · no live account"
@@ -797,6 +809,36 @@ export function Settings({
           </div>
           <ShieldCheck size={23} />
         </div>
+        <dl className="student-profile">
+          <div className="profile-wide">
+            <dt>Name</dt>
+            <dd>{student?.fullName || "Not provided by CampX"}</dd>
+          </div>
+          <div className="profile-wide">
+            <dt>CampX profile email</dt>
+            <dd>{student?.email || "Not provided by CampX"}</dd>
+          </div>
+          <div className="profile-wide">
+            <dt>Login used</dt>
+            <dd>{loginId || "Not available"}</dd>
+          </div>
+          <div>
+            <dt>Roll number</dt>
+            <dd>{student?.rollNo || "Not provided"}</dd>
+          </div>
+          <div>
+            <dt>Branch</dt>
+            <dd>{student?.branchCode || "Not provided"}</dd>
+          </div>
+          <div>
+            <dt>Class / section</dt>
+            <dd>{classroom || "Not provided"}</dd>
+          </div>
+          <div>
+            <dt>Semester</dt>
+            <dd>{student?.semNo ?? semester ?? "Not provided"}</dd>
+          </div>
+        </dl>
         <p className="muted">
           Credentials are kept in memory, not browser storage. Reloading
           requires reconnecting. Usage tracking is not active in this release.

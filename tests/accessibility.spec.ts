@@ -33,4 +33,22 @@ for (const theme of ["light", "dark"])
         })),
       })),
     ).toEqual([]);
+    await page
+      .getByRole("button", { name: "Settings", exact: true })
+      .first()
+      .click();
+    const profileScan = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    expect(profileScan.violations).toEqual([]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `/tmp/attendance-${theme}-settings.png`,
+      fullPage: true,
+    });
   });

@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 const fixture = {
   primary: {
-    student: { fullName: "Test Student", rollNo: "TEST", branchCode: "CSE" },
+    student: {
+      fullName: "Test Student",
+      email: "profile@example.test",
+      rollNo: "TEST",
+      branchCode: "CSE",
+    },
     primaryAttendance: {
       present: 80,
       absent: 20,
@@ -257,4 +262,35 @@ test("small phone and tablet layouts keep controls within the viewport", async (
       page.getByRole("heading", { name: "Make it yours." }),
     ).toBeVisible();
   }
+});
+
+test("settings displays verified student details separately from the login used", async ({
+  page,
+}) => {
+  await page.route("**/api/attendance", (route) =>
+    route.fulfill({ json: fixture }),
+  );
+  await page.goto("/");
+  await page.getByLabel("CampX email or login ID").fill("login@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("test-only");
+  await page.getByRole("button", { name: "Open my dashboard" }).click();
+  await page
+    .getByRole("button", { name: "Settings", exact: true })
+    .first()
+    .click();
+  const profile = page.locator(".student-profile");
+  for (const value of [
+    "Test Student",
+    "profile@example.test",
+    "login@example.test",
+    "TEST",
+    "CSE",
+    "7",
+  ])
+    await expect(profile.getByText(value, { exact: true })).toBeVisible();
+  await expect(
+    profile.getByText("Not provided", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(profile).toHaveCount(0);
 });

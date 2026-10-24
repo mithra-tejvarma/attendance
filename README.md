@@ -75,6 +75,8 @@ To extend the app, use `src/App.tsx` for session/page orchestration, `src/compon
 
 ## Focused glass interface
 
-Overview contains only the attendance hero, attended/missed/total counts, and today’s classes. Subjects and Calendar live in separate navigation views. The workspace/profile top bar is removed. Frosted surfaces use static indigo/rose ambient gradients in light mode and lavender/blue gradients in dark mode; semantic present/absent colors remain distinct. Blur is limited to surfaces and navigation with reduced-transparency and unsupported-browser fallbacks.
+Overview contains only the attendance hero, attended/missed/total counts, and today’s classes. Subjects and Calendar live in separate navigation views. The workspace/profile top bar is removed. Frosted surfaces use the original static interface’s navy/slate and indigo palette in dark mode, with neutral gray/white surfaces and indigo in light mode; semantic present/absent colors remain distinct. Blur is limited to surfaces and navigation with reduced-transparency and unsupported-browser fallbacks.
 
 The class clock follows Asia/Kolkata (campus IST), updates every 15 seconds and resynchronizes when the tab becomes visible. A class is upcoming before its start, live from start inclusive to end exclusive, and completed afterward. Invalid or missing times remain unavailable. This clock does not poll CampX or imply that attendance is streamed live: refresh retrieves newly posted attendance. Day changes select the new campus date; refresh if its bundle is unavailable.
+
+Settings shows available CampX student name, profile email, roll number, branch, class and semester. The separately labeled “Login used” comes from the current in-memory login, since a CampX login ID need not equal the profile email. Missing fields show explicit placeholders; passwords are never displayed. Profile data is cleared on sign-out and is not added to browser storage.

@@ -97,7 +97,7 @@ export default function App() {
     } catch {}
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#090b16" : "#edf0fa");
+      ?.setAttribute("content", theme === "dark" ? "#090d16" : "#f3f4f6");
   }, [theme]);
   useEffect(() => {
     // Remove legacy plaintext credentials and personal browser caches on migration.
@@ -569,7 +569,10 @@ export default function App() {
                   theme={theme}
                   setTheme={setTheme}
                   demo={demo}
-                  studentName={student?.fullName}
+                  student={student}
+                  loginId={demo ? "alex@example.test" : credentials?.loginId}
+                  classroom={data.primary?.classroom?.name}
+                  semester={data.dynamicContext?.semNo}
                   install={install}
                   doInstall={async () => {
                     if (install) {

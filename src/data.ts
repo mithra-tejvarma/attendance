@@ -18,14 +18,16 @@ export type Bundle = {
   attendance: Slot[];
   hasRecord: boolean;
 };
+export type Student = {
+  fullName?: string;
+  email?: string;
+  rollNo?: string;
+  branchCode?: string;
+  semNo?: string | number;
+};
 export type Dashboard = {
   primary?: {
-    student?: {
-      fullName?: string;
-      rollNo?: string;
-      branchCode?: string;
-      semNo?: string;
-    };
+    student?: Student;
     classroom?: { name?: string };
     attendancePercentage?: number;
     primaryAttendance?: {
@@ -130,6 +132,7 @@ export function demoData(): Dashboard {
     primary: {
       student: {
         fullName: "Alex Morgan",
+        email: "alex@example.test",
         rollNo: "DEMO STUDENT",
         branchCode: "CSE",
         semNo: "7",
