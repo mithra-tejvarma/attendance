@@ -53,7 +53,7 @@ No Firebase secrets, Admin SDK keys, analytics writes, or push backend have been
 - Navigation, theme changes and planner calculations are local; network refreshes never disable navigation. Network latency is not guaranteed to be zero.
 - Demo mode is clearly labeled and never contacts CampX. No sample data is substituted into a live account.
 - Missing calendar records are unknown, not absent. Unknown status labels stay unclassified until the upstream schema is verified.
-- Timetable names support the known/fallback shapes. Class-level present/absent mapping remains pending real response validation; the interface does not fabricate it.
+- Timetable names support the known/fallback shapes. Class-level present/absent uses the legacy `isAbsent` flag (0 = present, 1 = absent). Records match by explicit session identity, subject plus time, or a subject that occurs only once in both datasets. Missing flags, conflicting records and ambiguous repeated subjects stay unmarked. Real-account payload validation is still pending.
 - Planner projections use attended/total counts and a 75% reference. They do not implement the legacy full-semester projection or institution-specific exemptions.
 - Attendance is held in memory, not persisted offline. The service worker caches only public UI assets. Closing/reloading offline does not restore personal attendance.
 
@@ -72,3 +72,9 @@ For future sessions, prefer same-site `attendance.varmalabs.tech` and `api.varma
 System fonts, local icons, no animation library, limited backdrop blur, reduced-motion support and immediate React state transitions keep interactions lightweight. Bundle sizes are printed by Vite; measure actual low-end mobile performance and CampX latency before promising response targets.
 
 To extend the app, use `src/App.tsx` for session/page orchestration, `src/components.tsx` for views, `src/api.ts` for transport, `src/data.ts` for payload types and clearly separated demo fixtures, and `src/styles.css` for theme tokens and responsive styling.
+
+## Focused glass interface
+
+Overview contains only the attendance hero, attended/missed/total counts, and today’s classes. Subjects and Calendar live in separate navigation views. The workspace/profile top bar is removed. Frosted surfaces use static indigo/rose ambient gradients in light mode and lavender/blue gradients in dark mode; semantic present/absent colors remain distinct. Blur is limited to surfaces and navigation with reduced-transparency and unsupported-browser fallbacks.
+
+The class clock follows Asia/Kolkata (campus IST), updates every 15 seconds and resynchronizes when the tab becomes visible. A class is upcoming before its start, live from start inclusive to end exclusive, and completed afterward. Invalid or missing times remain unavailable. This clock does not poll CampX or imply that attendance is streamed live: refresh retrieves newly posted attendance. Day changes select the new campus date; refresh if its bundle is unavailable.

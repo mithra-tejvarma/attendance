@@ -36,7 +36,7 @@ test("demo navigation, planner, theme persistence and sign out", async ({
     .getByRole("button", { name: "Explore a sample dashboard" })
     .click();
   await expect(
-    page.getByRole("heading", { name: /A little clarity/ }),
+    page.getByRole("heading", { name: "Your attendance", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Subjects", exact: true })
@@ -78,7 +78,7 @@ test("login uses live API contract without persisting credentials or prefetching
   await page.getByLabel("Password", { exact: true }).fill("fixture-secret");
   await page.getByRole("button", { name: "Open my dashboard" }).click();
   await expect(
-    page.getByRole("heading", { name: /A little clarity/ }),
+    page.getByRole("heading", { name: "Your attendance", exact: true }),
   ).toBeVisible();
   await page.waitForTimeout(1300);
   expect(calls).toEqual(["/api/attendance"]);

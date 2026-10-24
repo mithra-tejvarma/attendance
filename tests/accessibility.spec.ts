@@ -4,6 +4,7 @@ for (const theme of ["light", "dark"])
   test(`${theme} key screens meet automated accessibility checks`, async ({
     page,
   }) => {
+    await page.clock.install({ time: new Date("2026-10-24T04:00:00Z") });
     await page.addInitScript(
       (value) => localStorage.setItem("vl-theme", value),
       theme,
@@ -19,6 +20,10 @@ for (const theme of ["light", "dark"])
     scan = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
       .analyze();
+    await page.screenshot({
+      path: `/tmp/attendance-${theme}-glass.png`,
+      fullPage: true,
+    });
     expect(
       scan.violations.map((v) => ({
         id: v.id,

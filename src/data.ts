@@ -1,3 +1,4 @@
+import { campusDateKey } from "./schedule";
 export type Subject = {
   subjectName: string;
   present: number;
@@ -6,7 +7,7 @@ export type Subject = {
 };
 export type Slot = {
   subjectName?: string;
-  subject?: { name?: string; subjectName?: string };
+  subject?: { id?: string | number; name?: string; subjectName?: string };
   fromTime?: string;
   toTime?: string;
   orderNumber?: number;
@@ -92,15 +93,38 @@ export function demoData(): Dashboard {
     if (d.getDay() !== 0)
       statuses[dayKey(d)] = n % 7 === 0 ? "absent" : "present";
   }
-  dates[dayKey(today)] = {
+  dates[campusDateKey(today)] = {
     hasRecord: true,
     timetable: [
-      { subjectName: "Machine Learning", fromTime: "09:00", toTime: "10:00" },
-      { subjectName: "Cloud Computing", fromTime: "10:00", toTime: "11:00" },
-      { subjectName: "Data Analytics", fromTime: "11:15", toTime: "12:15" },
-      { subjectName: "Internet of Things", fromTime: "13:00", toTime: "14:00" },
+      {
+        subjectId: "ml",
+        subjectName: "Machine Learning",
+        fromTime: "09:00",
+        toTime: "10:00",
+      },
+      {
+        subjectId: "cloud",
+        subjectName: "Cloud Computing",
+        fromTime: "10:00",
+        toTime: "11:00",
+      },
+      {
+        subjectId: "data",
+        subjectName: "Data Analytics",
+        fromTime: "11:15",
+        toTime: "12:15",
+      },
+      {
+        subjectId: "iot",
+        subjectName: "Internet of Things",
+        fromTime: "13:00",
+        toTime: "14:00",
+      },
     ],
-    attendance: [],
+    attendance: [
+      { subjectId: "ml", isAbsent: 0 },
+      { subjectId: "cloud", isAbsent: 1 },
+    ],
   };
   return {
     primary: {

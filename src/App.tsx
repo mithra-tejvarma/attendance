@@ -1,3 +1,4 @@
+import { CAMPUS_ZONE, campusDateKey } from "./schedule";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -10,29 +11,19 @@ import {
   Sun,
   Moon,
   RefreshCw,
-  LogOut,
   Check,
-  ChevronLeft,
-  ChevronRight,
-  Bell,
   ShieldCheck,
-  Download,
   WifiOff,
   X,
   Sparkles,
-  Eye,
-  EyeOff,
-  LoaderCircle,
   CircleHelp,
 } from "lucide-react";
 import {
   demoData,
-  dayKey,
   monthKey,
   readTheme,
   type Dashboard,
   type Bundle,
-  type Subject,
 } from "./data";
 import { login, post, type Credentials } from "./api";
 
@@ -57,12 +48,20 @@ const pages: { id: Page; label: string; icon: typeof Sun }[] = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "planner", label: "Planner", icon: SlidersHorizontal },
 ];
-const fmtMonth = (date: Date) =>
-  date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 const pct = (value: unknown) =>
   Number.isFinite(Number(value)) ? Number(value) : 0;
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
 export default function App() {
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setClock(new Date());
+    const timer = setInterval(tick, 15000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
   const [theme, setTheme] = useState(readTheme),
     [page, setPage] = useState<Page>("overview");
   const [data, setData] = useState<Dashboard | null>(null),
@@ -98,7 +97,7 @@ export default function App() {
     } catch {}
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#0c1218" : "#f4f6f2");
+      ?.setAttribute("content", theme === "dark" ? "#090b16" : "#edf0fa");
   }, [theme]);
   useEffect(() => {
     // Remove legacy plaintext credentials and personal browser caches on migration.
@@ -229,7 +228,7 @@ export default function App() {
   useEffect(() => {
     if (
       !data ||
-      (page !== "calendar" && page !== "overview") ||
+      page !== "calendar" ||
       months[calendarKey] ||
       demo ||
       !credentials ||
@@ -273,7 +272,7 @@ export default function App() {
     data?.subjectWise?.overallAttendance ?? data?.primary?.attendancePercentage,
   );
   const stats = data?.primary?.primaryAttendance;
-  const today = dayKey(new Date()),
+  const today = campusDateKey(clock),
     todayBundle = bundles[today];
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const moveMonth = (offset: number) => {
@@ -345,6 +344,14 @@ export default function App() {
                 <Settings2 size={19} />
                 Settings
               </button>
+              <button
+                className="nav-item"
+                onClick={toggleTheme}
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+              >
+                {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+                <span>Switch theme</span>
+              </button>
               <button className="nav-item" onClick={() => setHelp(true)}>
                 <CircleHelp size={19} />
                 Help & information
@@ -357,43 +364,6 @@ export default function App() {
             </div>
           </aside>
           <div className="main-shell">
-            <header className="topbar">
-              <div className="breadcrumb">
-                Workspace <span>/</span>
-                <strong>{page[0].toUpperCase() + page.slice(1)}</strong>
-              </div>
-              <div className="top-actions">
-                <span className="live-chip">
-                  <i />
-                  {demo ? "Demo workspace" : online ? "Connected" : "Offline"}
-                </span>
-                <button
-                  className="icon-button"
-                  aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-                  onClick={toggleTheme}
-                >
-                  {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="Notification settings"
-                  onClick={() => setPage("settings")}
-                >
-                  <Bell size={19} />
-                </button>
-                <button
-                  className="avatar"
-                  aria-label="Open account settings"
-                  onClick={() => setPage("settings")}
-                >
-                  {(student?.fullName || "S")
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((x) => x[0])
-                    .join("")}
-                </button>
-              </div>
-            </header>
             <main id="main-content">
               {demo && (
                 <div className="demo-banner">
@@ -433,7 +403,9 @@ export default function App() {
                   </button>
                 </div>
               )}
-              <div className="page-heading">
+              <div
+                className={`page-heading ${page === "overview" ? "overview-heading" : ""}`}
+              >
                 <div>
                   <div className="eyebrow">
                     {new Date().toLocaleDateString("en-IN", {
@@ -487,7 +459,7 @@ export default function App() {
                     <section className="glass hero-card">
                       <div className="card-overline">
                         <span>
-                          <i className="status-dot" /> YOUR ATTENDANCE
+                          <i className="status-dot" /> <h1>Your attendance</h1>
                         </span>
                         <span>
                           SEMESTER{" "}
@@ -535,7 +507,14 @@ export default function App() {
                             ? `${(overall - 75).toFixed(1)}% above the 75% reference target`
                             : "A few more classes can make a difference."}
                         </span>
-                        <ArrowUpRight size={17} />
+                        <button
+                          className="button secondary"
+                          onClick={refresh}
+                          disabled={busy || !online}
+                        >
+                          <RefreshCw size={16} className={busy ? "spin" : ""} />
+                          {busy ? "Refreshing…" : "Refresh data"}
+                        </button>
                       </div>
                     </section>
                     <div className="stats-column">
@@ -558,90 +537,8 @@ export default function App() {
                         icon="total"
                       />
                     </div>
-                    <section className="glass focus-card">
-                      <div className="card-overline">
-                        <span>THE BIG PICTURE</span>
-                        <Sparkles size={17} />
-                      </div>
-                      <h2>
-                        Small steps.
-                        <br />
-                        Strong semester.
-                      </h2>
-                      <p>
-                        Your attendance is a habit, not just a number. Stay
-                        consistent and keep your options open.
-                      </p>
-                      <div className="focus-meta">
-                        <span className="mini-avatar">
-                          {student?.branchCode?.slice(0, 2) || "ST"}
-                        </span>
-                        <div>
-                          <strong>
-                            {student?.branchCode || "Student"} ·{" "}
-                            {data.primary?.classroom?.name || "Your classroom"}
-                          </strong>
-                          <span>{student?.rollNo || "Connected student"}</span>
-                        </div>
-                      </div>
-                      <button
-                        className="text-button"
-                        onClick={() => setPage("planner")}
-                      >
-                        Try attendance planner <ArrowUpRight size={16} />
-                      </button>
-                    </section>
                   </div>
-                  <div className="content-grid">
-                    <section className="glass subject-card">
-                      <SectionTitle
-                        kicker="STAY ON TRACK"
-                        title="Subject breakdown"
-                        action={
-                          <button
-                            className="text-button"
-                            onClick={() => setPage("subjects")}
-                          >
-                            View all <ArrowUpRight size={15} />
-                          </button>
-                        }
-                      />
-                      <Subjects subjects={subjects} compact />
-                      <div className="subtle-footer">
-                        <span className="legend-dot" />
-                        75% reference target · check your institution’s rules
-                      </div>
-                    </section>
-                    <Today
-                      bundle={todayBundle}
-                      onCalendar={() => setPage("calendar")}
-                    />
-                  </div>
-                  <div className="content-grid bottom-grid">
-                    {calendar}
-                    <section className="glass reminder-card">
-                      <div className="reminder-icon">
-                        <Bell size={23} />
-                      </div>
-                      <span className="eyebrow">A LITTLE LESS CHECKING</span>
-                      <h2>
-                        A heads-up,
-                        <br />
-                        when it matters.
-                      </h2>
-                      <p>
-                        Attendance notifications are on the roadmap. Your
-                        browser won’t be asked for permission until they’re
-                        ready.
-                      </p>
-                      <button
-                        className="button secondary"
-                        onClick={() => setPage("settings")}
-                      >
-                        View app settings <ArrowUpRight size={16} />
-                      </button>
-                    </section>
-                  </div>
+                  <Today bundle={todayBundle} now={clock} />
                 </>
               )}
               {page === "subjects" && (
@@ -692,7 +589,7 @@ export default function App() {
                   {busy
                     ? "Fetching from CampX…"
                     : updated
-                      ? `${demo ? "Sample updated" : "Last refreshed"} at ${updated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+                      ? `${demo ? "Sample updated" : "Last refreshed"} at ${updated.toLocaleTimeString("en-IN", { timeZone: CAMPUS_ZONE, hour: "2-digit", minute: "2-digit" })}`
                       : "Not refreshed"}
                 </span>
                 <span>

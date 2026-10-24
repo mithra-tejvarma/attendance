@@ -1,3 +1,11 @@
+import {
+  attendanceFor,
+  recordStatus,
+  classPhase,
+  classProgress,
+  CAMPUS_ZONE,
+  campusDateKey,
+} from "./schedule";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -354,58 +362,118 @@ function slotName(s: import("./data").Slot) {
     "Scheduled class"
   );
 }
-export function Today({
-  bundle,
-  onCalendar,
-}: {
-  bundle?: Bundle;
-  onCalendar: () => void;
-}) {
+function AttendanceBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`attendance-badge ${status === "Present" ? "marked-present" : status === "Absent" ? "marked-absent" : "unmarked"}`}
+    >
+      {status === "Present" ? (
+        <Check size={13} />
+      ) : status === "Absent" ? (
+        <span aria-hidden="true">×</span>
+      ) : (
+        <span aria-hidden="true">·</span>
+      )}
+      {status}
+    </span>
+  );
+}
+export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
+  const clock = now.toLocaleTimeString("en-IN", {
+    timeZone: CAMPUS_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const timetable = bundle?.timetable || [];
   return (
     <section className="glass today-card">
       <SectionTitle
-        kicker="ONE DAY AT A TIME"
-        title="Today’s schedule"
+        kicker="YOUR DAY, IN MOTION"
+        title="Today’s classes"
         action={
-          <span className="date-badge">
-            {new Date().toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-            })}
+          <span className="schedule-clock">
+            <i />
+            {clock} <small>IST</small>
           </span>
         }
       />
-      {bundle?.timetable?.length ? (
+      {timetable.length ? (
         <div className="timeline">
-          {bundle.timetable.map((s, i) => (
-            <div className="timeline-row" key={i}>
-              <div className="timeline-marker" />
-              <div>
-                <span className="slot-time">
-                  {s.fromTime?.slice(0, 5) || "Time unavailable"}
-                  {s.toTime ? ` – ${s.toTime.slice(0, 5)}` : ""}
-                </span>
-                <h3>{slotName(s)}</h3>
-                <span className="slot-note">
-                  Scheduled · see calendar for recorded details
-                </span>
+          {timetable.map((slot, i) => {
+            const phase = classPhase(slot, now),
+              live = phase === "Live now",
+              status = attendanceFor(slot, bundle!);
+            return (
+              <div
+                className={`timeline-row ${live ? "class-live" : ""} ${phase === "Completed" ? "class-complete" : ""}`}
+                key={i}
+              >
+                <div className="timeline-marker" />
+                <div className="class-time">
+                  <span>{slot.fromTime?.slice(0, 5) || "—"}</span>
+                  <small>{slot.toTime?.slice(0, 5) || "No time"}</small>
+                </div>
+                <div className="class-content">
+                  <div className="class-heading">
+                    <h3>{slotName(slot)}</h3>
+                    <span className={`phase-label ${live ? "is-live" : ""}`}>
+                      {live && <i />}
+                      {phase}
+                    </span>
+                  </div>
+                  <p className="slot-note">
+                    {status === "Not marked"
+                      ? "No confirmed attendance record"
+                      : `Attendance marked ${status.toLowerCase()}`}
+                  </p>
+                  {live && (
+                    <div
+                      className="class-progress"
+                      role="progressbar"
+                      aria-label={`${slotName(slot)} class progress`}
+                      aria-valuenow={Math.round(classProgress(slot, now))}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <span style={{ width: `${classProgress(slot, now)}%` }} />
+                    </div>
+                  )}
+                </div>
+                <AttendanceBadge status={status} />
               </div>
+            );
+          })}
+        </div>
+      ) : bundle?.attendance?.length ? (
+        <div className="timeline">
+          {bundle.attendance.map((record, i) => (
+            <div className="timeline-row record-only" key={i}>
+              <BookOpen size={18} />
+              <div className="class-content">
+                <h3>{slotName(record)}</h3>
+                <p className="slot-note">
+                  Recorded attendance · schedule unavailable
+                </p>
+              </div>
+              <AttendanceBadge status={recordStatus(record)} />
             </div>
           ))}
         </div>
       ) : (
         <Empty
-          title="A little breathing room"
+          title="No classes to show"
           text={
             bundle
-              ? "No scheduled classes were returned for today. This doesn’t confirm a holiday."
-              : "Today’s schedule is not available yet."
+              ? "No scheduled classes were returned for today. This does not confirm a holiday."
+              : "Today’s schedule is not available. Refresh to check for new data."
           }
         />
       )}
-      <button className="full-width-link" onClick={onCalendar}>
-        Explore your calendar <ArrowRight size={16} />
-      </button>
+      <div className="schedule-footer">
+        <span className="clock-dot" />
+        Class timing follows campus time (IST). Refresh for newly marked
+        attendance.
+      </div>
     </section>
   );
 }
@@ -486,7 +554,7 @@ export function Calendar({
           return (
             <button
               key={key}
-              className={`calendar-day ${state} ${key === dayKey(new Date()) ? "today" : ""} ${selected === key ? "selected" : ""}`}
+              className={`calendar-day ${state} ${key === campusDateKey(new Date()) ? "today" : ""} ${selected === key ? "selected" : ""}`}
               aria-label={`${key}: ${state === "unknown" ? "no confirmed status" : state}`}
               aria-pressed={selected === key}
               onClick={() => select(key)}
@@ -562,11 +630,12 @@ export function DayDetails({
                     {s.toTime ? `– ${s.toTime.slice(0, 5)}` : ""}
                   </span>
                 </div>
+                <AttendanceBadge status={attendanceFor(s, bundle)} />
               </div>
             ))}
           <p className="muted">
-            Personal class-level statuses will be shown after the upstream
-            record mapping is verified.
+            Only uniquely matched records are labeled present or absent. Missing
+            or ambiguous records stay unmarked.
           </p>
         </>
       )}
