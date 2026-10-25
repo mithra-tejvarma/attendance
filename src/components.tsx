@@ -1,5 +1,9 @@
 import {
   attendanceFor,
+  matchingAttendance,
+  dayState,
+  dayLabels,
+  daySummary,
   recordStatus,
   classPhase,
   classProgress,
@@ -26,13 +30,7 @@ import {
   EyeOff,
   LoaderCircle,
 } from "lucide-react";
-import {
-  dayKey,
-  monthKey,
-  type Bundle,
-  type Subject,
-  type Student,
-} from "./data";
+import { dayKey, type Bundle, type Subject, type Student } from "./data";
 import type { Credentials } from "./api";
 export type InstallEvent = Event & {
   prompt: () => Promise<void>;
@@ -73,7 +71,7 @@ export function Brand() {
   return (
     <a className="brand" href="/" aria-label="Attendance home">
       <span className="brand-mark">
-        a<span>•</span>
+        <img src="/icon.svg" alt="" aria-hidden="true" />
       </span>
       <span>
         attendance<span className="brand-by">BY VARMA LABS</span>
@@ -85,14 +83,12 @@ export function Login({
   busy,
   error,
   login: submit,
-  explore,
   theme,
   toggleTheme,
 }: {
   busy: boolean;
   error: string;
   login: (c: Credentials) => void;
-  explore: () => void;
   theme: string;
   toggleTheme: () => void;
 }) {
@@ -100,7 +96,7 @@ export function Login({
     [password, setPassword] = useState(""),
     [show, setShow] = useState(false);
   return (
-    <div className="login-page">
+    <div className="login-page simple-login">
       <header>
         <Brand />
         <button
@@ -112,56 +108,13 @@ export function Login({
         </button>
       </header>
       <main className="login-layout">
-        <section className="login-intro">
-          <span className="label-chip">
-            <i />A LITTLE MORE CLARITY
-          </span>
-          <h1>
-            Your college day.
-            <br />
-            Beautifully
-            <br />
-            <span>in focus.</span>
-          </h1>
-          <p>
-            Less checking. More knowing. A calmer space for your attendance,
-            subjects, and the days ahead.
-          </p>
-          <div className="login-benefits">
-            <span>
-              <Check size={16} />
-              Your personal attendance
-            </span>
-            <span>
-              <Check size={16} />A clearer semester
-            </span>
-          </div>
-          <div className="login-visual">
-            <div className="visual-orbit" />
-            <div className="glass visual-ticket">
-              <span>
-                <Sparkles size={15} /> A FRESH PERSPECTIVE
-              </span>
-              <strong>
-                Show up.
-                <br />
-                Stay ahead.
-              </strong>
-              <div className="visual-bars">
-                {[35, 60, 48, 80, 65, 92, 76, 100, 88].map((h, i) => (
-                  <i key={i} style={{ height: h }} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
         <section className="glass login-card">
-          <div className="login-card-icon">
-            <ArrowUpRight size={26} />
+          <div className="login-emblem">
+            <img src="/icon.svg" alt="" />
           </div>
-          <span className="eyebrow">WELCOME TO YOUR WORKSPACE</span>
-          <h2>Good to see you.</h2>
-          <p>Connect with your CampX details to see your attendance.</p>
+          <span className="eyebrow">YOUR STUDENT WORKSPACE</span>
+          <h1>Sign in</h1>
+          <p>Use your CampX email and password.</p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -173,16 +126,16 @@ export function Login({
               id="login-email"
               name="username"
               autoComplete="username"
-              placeholder="Your college email or login ID"
+              inputMode="email"
+              placeholder="Your college email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={busy}
             />
-            <div className="label-row">
-              <label htmlFor="login-password">Password</label>
-              <span>CampX credentials</span>
-            </div>
+            <label className="password-label" htmlFor="login-password">
+              Password
+            </label>
             <div className="password-field">
               <input
                 id="login-password"
@@ -216,38 +169,21 @@ export function Login({
                 </>
               ) : (
                 <>
-                  Open my dashboard <ArrowRight size={18} />
+                  Open my dashboard
+                  <ArrowRight size={18} />
                 </>
               )}
             </button>
           </form>
           <div className="privacy-note">
-            <ShieldCheck size={17} />
-            <span>
-              Your password stays in this open session. It isn’t saved in your
-              browser storage.
-            </span>
+            <ShieldCheck size={16} />
+            <span>Your password isn’t saved in browser storage.</span>
           </div>
-          <div className="login-divider">
-            <span>JUST LOOKING AROUND?</span>
-          </div>
-          <button
-            className="button secondary demo-button"
-            onClick={explore}
-            disabled={busy}
-          >
-            Explore a sample dashboard <ArrowUpRight size={16} />
-          </button>
-          <p className="login-disclaimer">
-            Independent student app. Not affiliated with CampX.
-            <br />
-            Official records remain with your institution.
-          </p>
         </section>
       </main>
       <footer className="login-footer">
-        <span>© {new Date().getFullYear()} Varma Labs</span>
-        <span>Designed for a clearer college day.</span>
+        <span>Attendance by Varma Labs</span>
+        <span>Independent student app</span>
       </footer>
     </div>
   );
@@ -494,7 +430,7 @@ export function Calendar({
   selected,
   loading,
   error,
-  demo,
+  retry,
 }: {
   date: Date;
   statuses: Record<string, string>;
@@ -504,149 +440,267 @@ export function Calendar({
   selected: string | null;
   loading: boolean;
   error: string;
-  demo: boolean;
+  retry: () => void;
 }) {
   const first =
       (new Date(date.getFullYear(), date.getMonth(), 1).getDay() + 6) % 7,
     count = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const days = Array.from({ length: count }, (_, i) => {
+    const key = dayKey(new Date(date.getFullYear(), date.getMonth(), i + 1));
+    return {
+      key,
+      number: i + 1,
+      state: dayState(statuses[key], bundles[key]),
+      summary: daySummary(bundles[key]),
+    };
+  });
+  const today = campusDateKey(new Date()),
+    current = new Date(today + "T12:00:00");
   return (
-    <section className="glass calendar-card">
+    <section
+      className="glass calendar-card student-calendar"
+      aria-label="Attendance calendar"
+      aria-busy={loading}
+    >
       <SectionTitle
-        kicker="YOUR ATTENDANCE CALENDAR"
+        kicker="ONE DAY AT A TIME"
         title={fmtMonth(date)}
         action={
           <div className="calendar-controls">
             <button aria-label="Previous month" onClick={() => move(-1)}>
-              <ChevronLeft size={19} />
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              className="calendar-today"
+              onClick={() =>
+                move(
+                  (current.getFullYear() - date.getFullYear()) * 12 +
+                    current.getMonth() -
+                    date.getMonth(),
+                )
+              }
+            >
+              Today
             </button>
             <button aria-label="Next month" onClick={() => move(1)}>
-              <ChevronRight size={19} />
+              <ChevronRight size={18} />
             </button>
           </div>
         }
       />
+      <div className="month-summary">
+        <span className="month-present">
+          <strong>{days.filter((d) => d.state === "present").length}</strong>
+          full present
+        </span>
+        <span className="month-partial">
+          <strong>{days.filter((d) => d.state === "partial").length}</strong>
+          mixed
+        </span>
+        <span className="month-absent">
+          <strong>{days.filter((d) => d.state === "absent").length}</strong>full
+          absent
+        </span>
+      </div>
       {loading && (
         <p className="calendar-message" role="status">
           <LoaderCircle size={14} className="spin" />
-          Loading selected month…
+          Loading this month…
         </p>
       )}
       {error && (
-        <p className="form-error" role="alert">
-          {error} Navigate away and back to retry.
-        </p>
-      )}
-      {demo && monthKey(date) !== monthKey(new Date()) && (
-        <p className="calendar-message">No sample records for this month.</p>
+        <div className="calendar-error" role="alert">
+          <span>{error}</span>
+          <button className="text-button" onClick={retry}>
+            Try again
+          </button>
+        </div>
       )}
       <div className="calendar-grid">
-        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <span className="weekday" key={i}>
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+          <span className="weekday" key={d}>
             {d}
           </span>
         ))}
         {Array.from({ length: first }, (_, i) => (
-          <span key={`space-${i}`} />
+          <span key={"gap" + i} />
         ))}
-        {Array.from({ length: count }, (_, i) => {
-          const key = dayKey(
-            new Date(date.getFullYear(), date.getMonth(), i + 1),
-          );
-          const raw = statuses[key]?.toLowerCase() || "";
-          const state =
-            raw === "present"
-              ? "present"
-              : raw === "absent"
-                ? "absent"
-                : "unknown";
-          return (
-            <button
-              key={key}
-              className={`calendar-day ${state} ${key === campusDateKey(new Date()) ? "today" : ""} ${selected === key ? "selected" : ""}`}
-              aria-label={`${key}: ${state === "unknown" ? "no confirmed status" : state}`}
-              aria-pressed={selected === key}
-              onClick={() => select(key)}
-            >
-              {i + 1}
-              {(state !== "unknown" || bundles[key]?.hasRecord) && <i />}
-            </button>
-          );
-        })}
+        {days.map((day) => (
+          <button
+            key={day.key}
+            className={`calendar-day ${day.state} ${day.key === today ? "today" : ""} ${selected === day.key ? "selected" : ""}`}
+            aria-label={`${day.key}: ${dayLabels[day.state]}`}
+            aria-pressed={selected === day.key}
+            onClick={() => select(day.key)}
+          >
+            <span className="day-number">{day.number}</span>
+            {day.summary.present + day.summary.absent > 0 ? (
+              <small>
+                {day.summary.present}/{day.summary.present + day.summary.absent}
+              </small>
+            ) : (
+              <span className="day-marker" aria-hidden="true" />
+            )}
+          </button>
+        ))}
       </div>
       <div className="calendar-legend">
         <span>
           <i className="present" />
-          Present
+          Full present
+        </span>
+        <span>
+          <i className="partial" />
+          Mixed
         </span>
         <span>
           <i className="absent" />
-          Absent
+          Full absent
+        </span>
+        <span>
+          <i className="pending" />
+          Awaiting marks
         </span>
         <span>
           <i />
-          No confirmed status
+          Unmarked
         </span>
       </div>
-      {selected && (
-        <DayDetails date={selected} bundle={bundles[selected]} compact />
-      )}
+      <p className="calendar-hint">
+        Select a day for class-by-class attendance. Fractions show attended /
+        marked classes.
+      </p>
     </section>
   );
 }
 export function DayDetails({
   date,
   bundle,
-  compact = false,
+  loading = false,
+  error = "",
 }: {
   date: string | null;
   bundle?: Bundle;
-  compact?: boolean;
+  loading?: boolean;
+  error?: string;
 }) {
+  const summary = daySummary(bundle),
+    represented = new Set(
+      (bundle?.timetable || [])
+        .map((slot) => matchingAttendance(slot, bundle!))
+        .filter(Boolean),
+    );
+  const extra = (bundle?.attendance || []).filter(
+    (record) => !represented.has(record),
+  );
   return (
-    <section className={compact ? "day-inline" : "glass day-detail"}>
-      <span className="eyebrow">
-        {date
-          ? new Date(date + "T12:00:00").toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
-          : "THE DETAILS"}
-      </span>
-      <h2>{date ? "Day details" : "Pick a day"}</h2>
-      {!date ? (
-        <p>Select a date to explore its schedule and recorded attendance.</p>
-      ) : !bundle ? (
+    <section
+      className="glass day-detail student-day-detail"
+      aria-label="Selected day details"
+      aria-busy={loading}
+      aria-live="polite"
+    >
+      <div className="day-detail-heading">
+        <span className="eyebrow">YOUR DAILY RECORD</span>
+        <h2>
+          {date
+            ? new Date(date + "T12:00:00").toLocaleDateString("en-IN", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })
+            : "Choose a day"}
+        </h2>
         <p>
-          No class details were returned for this day. Missing records do not
-          mean absent.
+          {loading
+            ? "Fetching class details…"
+            : error
+              ? "Day details could not be refreshed."
+              : date
+                ? "Your classes and their recorded attendance."
+                : "Tap a date on the calendar to see your classes."}
         </p>
-      ) : (
+      </div>
+      {loading ? (
+        <div className="day-loading" role="status">
+          <LoaderCircle size={23} className="spin" />
+          Loading attendance…
+        </div>
+      ) : error ? (
+        <Empty
+          title="Details unavailable"
+          text="Retry the month to retrieve this day’s attendance."
+        />
+      ) : date && bundle ? (
         <>
-          <p>
-            {bundle.timetable?.length || 0} scheduled classes ·{" "}
-            {bundle.attendance?.length || 0} attendance records
-          </p>
-          {!compact &&
-            (bundle.timetable || []).map((s, i) => (
-              <div className="detail-row" key={i}>
-                <BookOpen size={17} />
-                <div>
-                  <strong>{slotName(s)}</strong>
-                  <span>
-                    {s.fromTime?.slice(0, 5) || "Time unavailable"}{" "}
-                    {s.toTime ? `– ${s.toTime.slice(0, 5)}` : ""}
-                  </span>
+          <div className="day-summary">
+            <span className="present">
+              <strong>{summary.present}</strong>Present
+            </span>
+            <span className="absent">
+              <strong>{summary.absent}</strong>Absent
+            </span>
+            <span className="pending">
+              <strong>{summary.pending}</strong>Unmarked
+            </span>
+          </div>
+          {bundle.timetable.length || extra.length ? (
+            <div className="day-class-list">
+              {bundle.timetable.map((slot, i) => (
+                <div className="detail-row" key={String(slot.id ?? i)}>
+                  <div className="class-order">
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <div className="detail-content">
+                    <strong>{slotName(slot)}</strong>
+                    <span>
+                      {slot.fromTime || "Time unavailable"}
+                      {slot.toTime ? ` – ${slot.toTime}` : ""}
+                      {slot.isSuspended ? " · Cancelled" : ""}
+                    </span>
+                    {(slot.subjectCode || slot.subject?.subjectCode) && (
+                      <small>
+                        {slot.subjectCode || slot.subject?.subjectCode}
+                      </small>
+                    )}
+                    {slot.facultyName && <small>{slot.facultyName}</small>}
+                  </div>
+                  <AttendanceBadge status={attendanceFor(slot, bundle)} />
                 </div>
-                <AttendanceBadge status={attendanceFor(s, bundle)} />
-              </div>
-            ))}
-          <p className="muted">
-            Only uniquely matched records are labeled present or absent. Missing
-            or ambiguous records stay unmarked.
-          </p>
+              ))}
+              {extra.length > 0 && bundle.timetable.length > 0 && (
+                <h3 className="extra-record-title">Other recorded classes</h3>
+              )}
+              {extra.map((record, i) => (
+                <div className="detail-row" key={"record" + i}>
+                  <div className="class-order">
+                    <BookOpen size={15} />
+                  </div>
+                  <div className="detail-content">
+                    <strong>{slotName(record)}</strong>
+                    <span>
+                      {record.fromTime || "Class time unavailable"}
+                      {record.toTime ? ` – ${record.toTime}` : ""}
+                    </span>
+                    {record.subjectCode && <small>{record.subjectCode}</small>}
+                  </div>
+                  <AttendanceBadge status={recordStatus(record)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              title="No classes recorded"
+              text="No schedule or attendance was returned for this date. Missing data does not mean absent."
+            />
+          )}
         </>
-      )}
+      ) : date && !error && !loading ? (
+        <Empty
+          title="No details yet"
+          text="This day has no available class records. Refresh the month to check for updates."
+        />
+      ) : null}
     </section>
   );
 }
@@ -755,7 +809,6 @@ export function Planner({ subjects }: { subjects: Subject[] }) {
 export function Settings({
   theme,
   setTheme,
-  demo,
   student,
   loginId,
   classroom,
@@ -766,7 +819,6 @@ export function Settings({
 }: {
   theme: string;
   setTheme: (s: string) => void;
-  demo: boolean;
   student?: Student;
   loginId?: string;
   classroom?: string;
@@ -803,11 +855,7 @@ export function Settings({
         <div className="setting-row">
           <div>
             <strong>{student?.fullName || "Connected student"}</strong>
-            <p>
-              {demo
-                ? "Sample workspace · no live account"
-                : "CampX connected for this open session"}
-            </p>
+            <p>CampX connected for this open session</p>
           </div>
           <ShieldCheck size={23} />
         </div>
@@ -847,7 +895,7 @@ export function Settings({
         </p>
         <button className="button secondary" onClick={signOut}>
           <LogOut size={16} />
-          {demo ? "Exit demo" : "Sign out"}
+          Sign out
         </button>
       </section>
       <section className="glass settings-card">

@@ -173,20 +173,7 @@ body::before {
   display: flex;
   flex-direction: column;
 }
-.demo-banner {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  border-radius: 12px;
-  margin-bottom: 20px;
-  padding: 9px 13px;
-  font-size: 10px;
-  backdrop-filter: blur(16px);
-}
-.demo-banner > button {
-  color: var(--green);
-  font-size: 10px;
-}
+
 .overview-heading {
   display: none;
 }
@@ -627,14 +614,7 @@ body::before {
     padding: 16px 16px 100px;
     max-width: 560px;
   }
-  .demo-banner {
-    font-size: 9px;
-    padding: 9px 10px;
-    margin-bottom: 16px;
-  }
-  .demo-banner > button {
-    font-size: 9px;
-  }
+
   .overview-grid {
     gap: 13px;
   }

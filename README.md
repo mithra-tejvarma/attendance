@@ -51,17 +51,17 @@ No Firebase credentials or push backend have been added. Optional backend usage 
 - The previous HTML interface is preserved in `docs/legacy-interface.html` as a migration reference. It is not included in `dist` and should not be served: it contains the previous plaintext browser password behavior.
 - Current-month data is loaded at login. Other months load only when selected. No adjacent-month prefetch exists.
 - Navigation, theme changes and planner calculations are local; network refreshes never disable navigation. Network latency is not guaranteed to be zero.
-- Demo mode is clearly labeled and never contacts CampX. No sample data is substituted into a live account.
-- Missing calendar records are unknown, not absent. Unknown status labels stay unclassified until the upstream schema is verified.
+- The public app has only CampX login: there is no demo button, sample workspace, or marketing intro. Synthetic data lives only under `tests/` and is excluded from the application build.
+- Calendar colors distinguish green full-present days, red full-absent days, orange mixed days, and pending/unmarked records. Incomplete marks never turn a day fully present. Selected-day details include all scheduled and separately recorded classes, times, useful subject codes and faculty names, and personal statuses on mobile as well as desktop.
 - Timetable names support the known/fallback shapes. Class-level present/absent uses the legacy `isAbsent` flag (0 = present, 1 = absent). Records match by explicit session identity, subject plus time, or a subject that occurs only once in both datasets. Missing flags, conflicting records and ambiguous repeated subjects stay unmarked. Live responses now verify the embedded per-timetable personal record; the adapter uses its exact class link and absence-polarity flag.
 - Planner projections use attended/total counts and a 75% reference. They do not implement the legacy full-semester projection or institution-specific exemptions.
 - Attendance is held in memory, not persisted offline. The service worker caches only public UI assets. Closing/reloading offline does not restore personal attendance.
 
 ## Future work and rollout limits
 
-The async backend, private Supabase adapter/migration, encrypted upstream sessions, saved snapshots, and optional Firebase usage writer are implemented. They are not remotely configured or deployed. FCM delivery, unattended sync jobs and an analytics UI remain pending. See [backend activation and verification](docs/backend.md) for exact contracts, limits, tests, configuration and blockers.
+The async backend, private Supabase adapter/migration, encrypted upstream sessions, saved snapshots, and optional Firebase usage writer are implemented. Supabase persistence is configured and live-tested in this workspace; the new code is not deployed to Render or the live domain. FCM delivery, unattended sync jobs and an analytics UI remain pending. See [backend activation and verification](docs/backend.md) for exact contracts, limits, tests, configuration and blockers.
 
-Development runs with bounded in-memory storage; production explicitly requires Supabase. Live CampX checks have passed using the provided private development runtime. The Supabase service key works, but the schema migration is not applied; Firebase server credentials remain missing. Database persistence and analytics are therefore not activated or verified. Backend client limits, error handling and session behavior need a small authorized live pilot before broad rollout.
+Development runs with bounded in-memory storage; production explicitly requires Supabase. Live CampX checks have passed using the provided private development runtime. The Supabase migration is installed, and encrypted session persistence, private reads, refresh, month/day writes and logout have passed live checks. Firebase server credentials remain missing, so usage analytics are not activated. Backend client limits, error handling and session behavior need a small authorized live pilot before broad rollout.
 
 ## Release updates and performance
 
@@ -69,7 +69,7 @@ Development runs with bounded in-memory storage; production explicitly requires 
 
 System fonts, local icons, no animation library, limited backdrop blur, reduced-motion support and immediate React state transitions keep interactions lightweight. Bundle sizes are printed by Vite; measure actual low-end mobile performance and CampX latency before promising response targets.
 
-To extend the app, use `src/App.tsx` for session/page orchestration, `src/components.tsx` for views, `src/api.ts` for transport, `src/data.ts` for payload types and clearly separated demo fixtures, and `src/styles.css` for theme tokens and responsive styling.
+To extend the app, use `src/App.tsx` for session/page orchestration, `src/components.tsx` for views, `src/api.ts` for transport, `src/data.ts` for payload types, `tests/fixtures.ts` for isolated test data, and `src/styles.css` for theme tokens and responsive styling.
 
 ## Focused glass interface
 
@@ -78,3 +78,9 @@ Overview contains only the attendance hero, attended/missed/total counts, and to
 The class clock follows Asia/Kolkata (campus IST), updates every 15 seconds and resynchronizes when the tab becomes visible. A class is upcoming before its start, live from start inclusive to end exclusive, and completed afterward. Invalid or missing times remain unavailable. This clock does not poll CampX or imply that attendance is streamed live: refresh retrieves newly posted attendance. Day changes select the new campus date; refresh if its bundle is unavailable.
 
 Settings shows available CampX student name, profile email, roll number, branch, class and semester. The separately labeled “Login used” comes from the current in-memory login, since a CampX login ID need not equal the profile email. Missing fields show explicit placeholders; passwords are never displayed. Profile data is cleared on sign-out and is not added to browser storage.
+
+## Calendar and glass interactions
+
+Calendar opens a useful selected day automatically, shows full class details on mobile, and includes separately recorded attendance when no timetable link is available. Month loads are tracked per month, so rapidly switching months cannot hide a newer request's loading state. Failed requests have an explicit retry action and do not replace known student records. Subject/faculty details contain names and codes only, never contact data.
+
+`src/student.css` contains the student calendar, minimal login and legacy status palette. `src/useGlassLight.ts` tracks pointer light and a small scroll-driven ambient offset using a single scheduled animation frame, with no continuous idle loop. Reduced-motion disables movement; reduced-transparency and unsupported-browser fallbacks remain available.

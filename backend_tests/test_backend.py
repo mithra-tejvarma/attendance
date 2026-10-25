@@ -847,3 +847,25 @@ def test_insecure_development_runtime_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setenv("APP_ENV", "development")
     with pytest.raises(ValueError, match="private permissions"):
         load_development_env()
+
+
+def test_class_details_keep_useful_names_and_codes_without_faculty_contact_details():
+    from backend.normalize import slot_data
+
+    raw = {
+        "subjectCode": "MAT101",
+        "subject": {
+            "id": 1,
+            "name": "Mathematics",
+            "subjectCode": "MAT101",
+            "syllabusUrl": "PRIVATE",
+        },
+        "faculties": [
+            {"fullName": "Fixture Lecturer", "email": "PRIVATE", "mobile": "PRIVATE"}
+        ],
+    }
+    normalized = slot_data(raw)
+    assert normalized["subjectCode"] == "MAT101"
+    assert normalized["subject"]["subjectCode"] == "MAT101"
+    assert normalized["facultyName"] == "Fixture Lecturer"
+    assert "PRIVATE" not in json.dumps(normalized)

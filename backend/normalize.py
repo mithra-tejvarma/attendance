@@ -150,7 +150,7 @@ def slot_data(raw):
     for key in ("id", "subjectId", "classroomTimetableId", "timetableId", "slotId"):
         if raw.get(key) is not None:
             result[key] = identifier(raw[key])
-    for key in ("subjectName", "fromTime", "toTime"):
+    for key in ("subjectName", "subjectCode", "fromTime", "toTime"):
         if raw.get(key) is not None:
             if not isinstance(raw[key], str):
                 raise schema_error()
@@ -159,11 +159,19 @@ def slot_data(raw):
         subject = raw["subject"]
         result["subject"] = {
             key: text(subject[key])
-            for key in ("name", "subjectName")
+            for key in ("name", "subjectName", "subjectCode")
             if isinstance(subject.get(key), str)
         }
         if subject.get("id") is not None:
             result["subject"]["id"] = identifier(subject["id"])
+    if isinstance(raw.get("faculties"), list):
+        names = [
+            text(f.get("fullName"), 120)
+            for f in raw["faculties"][:3]
+            if isinstance(f, dict) and isinstance(f.get("fullName"), str)
+        ]
+        if names:
+            result["facultyName"] = ", ".join(names)
     for key in ("completed", "isSuspended"):
         if isinstance(raw.get(key), bool):
             result[key] = raw[key]

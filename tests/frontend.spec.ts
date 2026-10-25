@@ -1,3 +1,4 @@
+import { signIn } from "./helpers";
 import { test, expect } from "@playwright/test";
 const fixture = {
   primary: {
@@ -33,13 +34,11 @@ const fixture = {
   monthlyCalendar: {},
   dailyBundle: {},
 };
-test("demo navigation, planner, theme persistence and sign out", async ({
+test("account navigation, planner, theme persistence and sign out", async ({
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Explore a sample dashboard" })
-    .click();
+  await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Your attendance", exact: true }),
   ).toBeVisible();
@@ -66,7 +65,7 @@ test("demo navigation, planner, theme persistence and sign out", async ({
   await page.getByRole("button", { name: "Light", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("button", { name: "Dark", exact: true }).click();
-  await page.getByRole("button", { name: "Exit demo" }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
@@ -106,7 +105,7 @@ test("login uses live API contract without persisting credentials or prefetching
     .click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Good to see you." }),
+    page.getByRole("heading", { name: "Sign in", exact: true }),
   ).toBeVisible();
 });
 test("API errors preserve the form and allow retry", async ({ page }) => {
@@ -132,9 +131,7 @@ test("mobile layout has no overflow and switches pages immediately", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page
-    .getByRole("button", { name: "Explore a sample dashboard" })
-    .click();
+  await signIn(page);
   for (const label of [
     "Subjects",
     "Calendar",
@@ -162,9 +159,7 @@ test("mobile layout has no overflow and switches pages immediately", async ({
 test("desktop dashboard renders cleanly", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Explore a sample dashboard" })
-    .click();
+  await signIn(page);
   await page.screenshot({
     path: "/tmp/attendance-desktop.png",
     fullPage: true,
@@ -224,7 +219,7 @@ test("installed app shell is available offline without caching private API data"
   await context.setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Good to see you." }),
+    page.getByRole("heading", { name: "Sign in", exact: true }),
   ).toBeVisible();
   const cached = await page.evaluate(async () => {
     const keys = await caches.keys();
@@ -245,9 +240,7 @@ test("small phone and tablet layouts keep controls within the viewport", async (
   for (const width of [320, 768]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
-    await page
-      .getByRole("button", { name: "Explore a sample dashboard" })
-      .click();
+    await signIn(page);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

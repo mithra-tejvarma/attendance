@@ -1,3 +1,5 @@
+import { signIn } from "./helpers";
+import { fixtureDashboard } from "./fixtures";
 import { test, expect } from "@playwright/test";
 import {
   attendanceFor,
@@ -78,9 +80,7 @@ test("overview is focused and the live class changes without fetching attendance
 }) => {
   await page.clock.install({ time: new Date("2026-10-24T04:00:00Z") });
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Explore a sample dashboard" })
-    .click();
+  await signIn(page, fixtureDashboard(new Date("2026-10-24T04:00:00Z")));
   await expect(page.locator(".topbar")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Subject breakdown" }),

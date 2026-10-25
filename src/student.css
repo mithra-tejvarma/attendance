@@ -1,0 +1,687 @@
+/* Familiar attendance colors, with a quieter surface beneath the information. */
+:root {
+  --gold: #916100;
+  --partial: #92400e;
+  --day-present-bg: #dcfce7;
+  --day-present-text: #166534;
+  --day-absent-bg: #fee2e2;
+  --day-absent-text: #991b1b;
+  --day-partial-bg: #fef3c7;
+  --day-partial-text: #92400e;
+  --light-ink: rgba(255, 255, 255, 0.7);
+}
+:root[data-theme="dark"] {
+  --gold: #fbbf24;
+  --partial: #fbbf24;
+  --day-present-bg: rgba(16, 185, 129, 0.16);
+  --day-present-text: #6ee7b7;
+  --day-absent-bg: rgba(239, 68, 68, 0.17);
+  --day-absent-text: #fca5a5;
+  --day-partial-bg: rgba(245, 158, 11, 0.18);
+  --day-partial-text: #fcd34d;
+  --light-ink: rgba(165, 180, 252, 0.15);
+}
+body::before {
+  inset: -120px;
+  background:
+    radial-gradient(
+      ellipse at 28% 12%,
+      rgba(99, 102, 241, 0.11),
+      transparent 48%
+    ),
+    radial-gradient(
+      ellipse at 85% 68%,
+      rgba(59, 130, 246, 0.065),
+      transparent 46%
+    ),
+    radial-gradient(
+      ellipse at 15% 92%,
+      rgba(251, 191, 36, 0.04),
+      transparent 35%
+    );
+  transform: translate3d(0, calc(-1 * var(--flow-y, 0px)), 0);
+  will-change: transform;
+}
+.glass {
+  position: relative;
+  isolation: isolate;
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--light-x, 50%) var(--light-y, 0%),
+    var(--light-ink),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.glass[data-lit]::after {
+  opacity: 1;
+}
+.attendance-ring > div > span {
+  color: var(--gold) !important;
+}
+.hero-card .status-pill.good {
+  color: var(--present);
+  background: var(--present-soft);
+}
+.color-0 {
+  color: var(--blue);
+}
+.color-1 {
+  color: var(--present);
+}
+.color-2 {
+  color: var(--gold);
+}
+.color-3 {
+  color: var(--purple);
+}
+.color-4 {
+  color: var(--orange);
+}
+.brand-mark {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  letter-spacing: normal;
+  width: 43px;
+  height: 43px;
+  display: block;
+}
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.brand > span:last-child {
+  font-size: 21px;
+  letter-spacing: -0.7px;
+}
+.brand-by {
+  letter-spacing: 2.4px;
+}
+.simple-login {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  min-height: 100dvh;
+}
+.simple-login > header {
+  width: 100%;
+  height: 100px;
+  flex-shrink: 0;
+}
+.simple-login .login-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  max-width: 430px;
+  margin: 25px auto 50px;
+}
+.simple-login .login-card {
+  width: 100%;
+  padding: 38px;
+  border-radius: 28px;
+}
+.login-emblem {
+  width: 62px;
+  height: 62px;
+  margin-bottom: 26px;
+}
+.login-emblem img {
+  width: 100%;
+  height: 100%;
+}
+.simple-login .eyebrow {
+  font-size: 9px;
+}
+.simple-login h1 {
+  font-size: 34px;
+  letter-spacing: -1.2px;
+  margin: 9px 0 12px;
+}
+.simple-login .login-card > p {
+  font-size: 13px;
+}
+.simple-login .password-label {
+  margin-top: 23px;
+}
+.simple-login .login-card form {
+  margin-top: 30px;
+}
+.simple-login .login-submit {
+  margin-top: 26px;
+  font-size: 13px;
+}
+.simple-login .privacy-note {
+  font-size: 10px;
+  align-items: center;
+}
+.simple-login .login-footer {
+  width: 100%;
+  margin: auto auto 0;
+  font-size: 10px;
+}
+.calendar-page {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 22px;
+}
+.student-calendar {
+  overflow: hidden;
+  min-width: 0;
+}
+.student-calendar .section-title {
+  padding: 25px 24px 22px;
+  align-items: center;
+}
+.student-calendar .section-title h2 {
+  font-size: 23px;
+}
+.student-calendar .section-title .eyebrow {
+  font-size: 9px;
+}
+.calendar-controls {
+  gap: 5px;
+}
+.calendar-controls .calendar-today {
+  width: auto;
+  padding: 0 10px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.month-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 24px 25px;
+}
+.month-summary > span {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 10px;
+}
+.month-summary strong {
+  font-size: 21px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.month-present {
+  color: var(--day-present-text);
+  background: var(--day-present-bg);
+}
+.month-partial {
+  color: var(--day-partial-text);
+  background: var(--day-partial-bg);
+}
+.month-absent {
+  color: var(--day-absent-text);
+  background: var(--day-absent-bg);
+}
+.student-calendar .calendar-grid {
+  gap: 7px;
+  padding: 0 24px 22px;
+}
+.student-calendar .weekday {
+  font-size: 10px;
+  font-weight: 500;
+  padding-bottom: 9px;
+}
+.student-calendar .calendar-day {
+  height: 62px;
+  border-radius: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px;
+  position: relative;
+  min-width: 0;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+.student-calendar .day-number {
+  font-size: 16px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.student-calendar .calendar-day small {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.9;
+}
+.student-calendar .calendar-day.present {
+  background: var(--day-present-bg);
+  color: var(--day-present-text);
+}
+.student-calendar .calendar-day.absent {
+  background: var(--day-absent-bg);
+  color: var(--day-absent-text);
+}
+.student-calendar .calendar-day.partial {
+  background: var(--day-partial-bg);
+  color: var(--day-partial-text);
+}
+.student-calendar .calendar-day.pending {
+  border: 1px dashed var(--gold);
+  background: var(--input);
+  color: var(--muted);
+}
+.student-calendar .calendar-day.today {
+  border-color: var(--green);
+}
+.student-calendar .calendar-day.selected {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--gold) 8%, transparent);
+}
+.student-calendar .calendar-day:hover {
+  filter: brightness(1.08);
+  border-color: var(--green);
+}
+.day-marker {
+  height: 3px;
+  width: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.35;
+}
+.calendar-legend {
+  gap: 15px;
+  padding: 17px 24px 10px;
+  border-top: 1px solid var(--line);
+}
+.calendar-legend i.present {
+  background: var(--present);
+}
+.calendar-legend i.absent {
+  background: var(--orange);
+}
+.calendar-legend i.partial {
+  background: var(--gold);
+}
+.calendar-hint {
+  font-size: 10px;
+  padding: 0 24px 20px;
+  line-height: 1.7;
+}
+.calendar-error {
+  padding: 0 24px 18px;
+  font-size: 11px;
+  color: var(--orange);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.calendar-error .text-button {
+  color: var(--orange);
+  white-space: nowrap;
+  text-decoration: underline;
+}
+.student-day-detail {
+  padding: 0;
+  position: sticky;
+  top: 22px;
+  min-width: 0;
+  overflow: hidden;
+}
+.day-detail-heading {
+  padding: 26px 25px 20px;
+}
+.day-detail-heading h2 {
+  font-size: 23px;
+  margin: 9px 0 10px;
+  line-height: 1.3;
+}
+.day-detail-heading > p {
+  font-size: 11px;
+}
+.day-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 0 25px 24px;
+  gap: 9px;
+}
+.day-summary > span {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.day-summary strong {
+  font-size: 23px;
+  font-weight: 550;
+  line-height: 1.1;
+}
+.day-summary .present {
+  color: var(--day-present-text);
+  background: var(--day-present-bg);
+}
+.day-summary .absent {
+  color: var(--day-absent-text);
+  background: var(--day-absent-bg);
+}
+.day-summary .pending {
+  color: var(--muted);
+  background: var(--input);
+}
+.day-class-list {
+  padding: 0 24px 10px;
+}
+.student-day-detail .detail-row {
+  gap: 12px;
+  padding: 19px 0;
+  align-items: center;
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+}
+.class-order {
+  height: 28px;
+  width: 28px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--input);
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.detail-content {
+  flex: 1;
+  min-width: 0;
+}
+.student-day-detail .detail-content > strong {
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.student-day-detail .detail-content > span {
+  display: block;
+  font-size: 10px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.detail-content small {
+  display: block;
+  font-size: 9px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.student-day-detail .attendance-badge {
+  font-size: 9px;
+  min-width: 74px;
+  padding: 7px 8px;
+  align-self: center;
+}
+.extra-record-title {
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0;
+  padding: 20px 0 10px;
+  color: var(--muted);
+}
+.day-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .calendar-page {
+    grid-template-columns: 1fr;
+  }
+  .student-day-detail {
+    position: relative;
+    top: 0;
+  }
+  .student-calendar .calendar-day {
+    height: 67px;
+  }
+}
+@media (max-width: 680px) {
+  .simple-login > header {
+    height: 83px;
+  }
+  .simple-login .login-layout {
+    margin: 20px auto 35px;
+    max-width: 400px;
+  }
+  .simple-login .login-card {
+    padding: 29px 25px;
+    border-radius: 25px;
+  }
+  .login-emblem {
+    height: 54px;
+    width: 54px;
+    margin-bottom: 23px;
+  }
+  .simple-login h1 {
+    font-size: 31px;
+  }
+  .simple-login .login-footer {
+    font-size: 9px;
+  }
+  .simple-login .privacy-note {
+    font-size: 10px;
+  }
+  .simple-login .login-card input {
+    font-size: 16px;
+  }
+  .student-calendar .section-title {
+    padding: 24px 19px 20px;
+  }
+  .student-calendar .section-title h2 {
+    font-size: 21px;
+  }
+  .student-calendar .section-title .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.2px;
+  }
+  .calendar-controls button {
+    height: 32px;
+    width: 30px;
+  }
+  .calendar-controls .calendar-today {
+    font-size: 9px;
+    padding: 0 8px;
+  }
+  .month-summary {
+    padding: 0 19px 25px;
+    gap: 7px;
+  }
+  .month-summary > span {
+    padding: 10px;
+    font-size: 9px;
+  }
+  .month-summary strong {
+    font-size: 20px;
+  }
+  .student-calendar .calendar-grid {
+    padding: 0 15px 20px;
+    gap: 5px;
+  }
+  .student-calendar .weekday {
+    font-size: 9px;
+  }
+  .student-calendar .calendar-day {
+    height: 53px;
+    padding: 5px;
+    border-radius: 10px;
+  }
+  .student-calendar .day-number {
+    font-size: 14px;
+  }
+  .student-calendar .calendar-day small {
+    font-size: 8px;
+  }
+  .calendar-legend {
+    padding: 16px 19px 10px;
+    gap: 12px;
+    font-size: 9px;
+  }
+  .calendar-hint {
+    font-size: 9px;
+    padding: 0 19px 18px;
+  }
+  .calendar-error {
+    padding: 0 19px 15px;
+  }
+  .day-detail-heading {
+    padding: 24px 21px 20px;
+  }
+  .day-detail-heading h2 {
+    font-size: 22px;
+  }
+  .day-detail-heading > p {
+    font-size: 11px;
+  }
+  .day-summary {
+    padding: 0 21px 22px;
+    gap: 8px;
+  }
+  .day-class-list {
+    padding: 0 19px 7px;
+  }
+  .student-day-detail .detail-row {
+    gap: 10px;
+  }
+  .class-order {
+    width: 24px;
+    height: 24px;
+    font-size: 8px;
+  }
+  .student-day-detail .attendance-badge {
+    font-size: 8px;
+    min-width: 67px;
+    padding: 6px;
+  }
+  .student-day-detail .detail-content > strong {
+    font-size: 12px;
+  }
+  .student-day-detail .detail-content > span {
+    font-size: 9px;
+  }
+  .detail-content small {
+    font-size: 9px;
+  }
+  .calendar-page {
+    gap: 17px;
+  }
+}
+@media (max-width: 360px) {
+  .student-calendar .section-title {
+    flex-wrap: wrap;
+    gap: 17px;
+  }
+  .student-calendar .section-title h2 {
+    font-size: 22px;
+  }
+  .student-calendar .calendar-grid {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 4px;
+  }
+  .student-calendar .calendar-day {
+    height: 49px;
+  }
+  .student-day-detail .detail-row {
+    gap: 8px;
+  }
+  .class-order {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    transform: none;
+    will-change: auto;
+  }
+  .glass::after {
+    display: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass::after {
+    display: none;
+  }
+  body::before {
+    display: none;
+  }
+}
+.student-day-detail .attendance-badge {
+  display: inline-flex;
+  font-size: 10px;
+  min-width: 82px;
+  gap: 5px;
+  white-space: nowrap;
+}
+.student-day-detail .attendance-badge > span {
+  display: inline;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: inherit;
+}
+.student-day-detail .detail-content > strong {
+  font-size: 13px;
+}
+.student-day-detail .detail-content > span {
+  font-size: 11px;
+}
+.detail-content small {
+  font-size: 10px;
+}
+.calendar-hint {
+  font-size: 11px;
+}
+@media (max-width: 680px) {
+  .student-day-detail .attendance-badge {
+    display: inline-flex;
+    font-size: 9px;
+    min-width: 74px;
+    padding: 7px;
+  }
+  .student-day-detail .detail-content > strong {
+    font-size: 12px;
+  }
+  .student-day-detail .detail-content > span {
+    font-size: 10px;
+  }
+  .calendar-hint {
+    font-size: 10px;
+  }
+}
+
+.calendar-legend i.pending {
+  background: transparent;
+  border: 1px dashed var(--gold);
+  width: 7px;
+  height: 7px;
+}
+
+.student-day-detail .attendance-badge svg {
+  color: inherit;
+}

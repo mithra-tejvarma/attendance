@@ -1,3 +1,5 @@
+import { signIn } from "./helpers";
+import { fixtureDashboard } from "./fixtures";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 for (const theme of ["light", "dark"])
@@ -14,9 +16,7 @@ for (const theme of ["light", "dark"])
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
       .analyze();
     expect(scan.violations).toEqual([]);
-    await page
-      .getByRole("button", { name: "Explore a sample dashboard" })
-      .click();
+    await signIn(page, fixtureDashboard(new Date("2026-10-24T04:00:00Z")));
     scan = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
       .analyze();
@@ -33,6 +33,26 @@ for (const theme of ["light", "dark"])
         })),
       })),
     ).toEqual([]);
+    await page
+      .getByRole("button", { name: "Calendar", exact: true })
+      .first()
+      .click();
+    const calendarScan = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    expect(
+      calendarScan.violations.map((v) => ({
+        id: v.id,
+        nodes: v.nodes.map((n) => ({
+          target: n.target,
+          summary: n.failureSummary,
+        })),
+      })),
+    ).toEqual([]);
+    await page.screenshot({
+      path: `/tmp/attendance-${theme}-calendar.png`,
+      fullPage: true,
+    });
     await page
       .getByRole("button", { name: "Settings", exact: true })
       .first()

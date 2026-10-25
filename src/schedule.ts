@@ -62,16 +62,17 @@ const same = (a: unknown, b: unknown) =>
   b !== undefined &&
   b !== null &&
   String(a) === String(b);
-export function attendanceFor(slot: Slot, bundle: Bundle) {
-  if (slot.attendanceRequired === false) return "Not required";
+export function matchingAttendance(
+  slot: Slot,
+  bundle: Bundle,
+): Slot | undefined {
   const records = bundle.attendance || [];
   const exact = records.filter((r) =>
     ["classroomTimetableId", "timetableId", "slotId"].some(
       (key) => same(slot[key], r[key]) || same(slot.id, r[key]),
     ),
   );
-  if (exact.length)
-    return exact.length === 1 ? recordStatus(exact[0]) : "Not marked";
+  if (exact.length) return exact.length === 1 ? exact[0] : undefined;
   const timed = records.filter(
     (r) =>
       same(subjectId(slot), subjectId(r)) &&
@@ -79,8 +80,7 @@ export function attendanceFor(slot: Slot, bundle: Bundle) {
       minutes(r.fromTime) === minutes(slot.fromTime) &&
       (!r.toTime || minutes(r.toTime) === minutes(slot.toTime)),
   );
-  if (timed.length)
-    return timed.length === 1 ? recordStatus(timed[0]) : "Not marked";
+  if (timed.length) return timed.length === 1 ? timed[0] : undefined;
   // Subject-only matching is safe only when the subject occurs once in each dataset.
   const subjects = records.filter((r) => same(subjectId(slot), subjectId(r)));
   if (
@@ -94,8 +94,67 @@ export function attendanceFor(slot: Slot, bundle: Bundle) {
       slot.fromTime &&
       minutes(r.fromTime) !== minutes(slot.fromTime)
     )
-      return "Not marked";
-    return recordStatus(r);
+      return undefined;
+    return r;
   }
-  return "Not marked";
+  return undefined;
+}
+
+export function attendanceFor(slot: Slot, bundle: Bundle) {
+  return slot.attendanceRequired === false
+    ? "Not required"
+    : recordStatus(matchingAttendance(slot, bundle));
+}
+export function daySummary(bundle?: Bundle) {
+  const rows = bundle?.attendance || [],
+    required = (bundle?.timetable || []).filter(
+      (slot) => slot.attendanceRequired !== false && slot.isSuspended !== true,
+    );
+  return {
+    present: rows.filter((r) => recordStatus(r) === "Present").length,
+    absent: rows.filter((r) => recordStatus(r) === "Absent").length,
+    pending: required.filter(
+      (slot) => attendanceFor(slot, bundle!) === "Not marked",
+    ).length,
+    scheduled: bundle?.timetable.length || 0,
+  };
+}
+export type DayState =
+  "present" | "absent" | "partial" | "pending" | "unknown" | "holiday";
+export const dayLabels: Record<DayState, string> = {
+  present: "All classes attended",
+  absent: "All classes missed",
+  partial: "Mixed attendance",
+  pending: "Partially marked",
+  unknown: "No confirmed attendance",
+  holiday: "Holiday",
+};
+export function dayState(raw: string | undefined, bundle?: Bundle): DayState {
+  const status = raw?.toLowerCase(),
+    summary = daySummary(bundle);
+  if (summary.present && summary.absent) return "partial";
+  if (summary.pending && (summary.present || summary.absent)) return "pending";
+  if (
+    (status === "present" && summary.absent > 0) ||
+    (status === "absent" && summary.present > 0)
+  )
+    return "pending";
+  if (
+    status === "present" ||
+    status === "absent" ||
+    status === "partial" ||
+    status === "holiday"
+  )
+    return status;
+  const required = (bundle?.timetable || []).filter(
+    (slot) => slot.attendanceRequired !== false && slot.isSuspended !== true,
+  );
+  if (required.length && !summary.pending) {
+    const states = required.map((slot) => attendanceFor(slot, bundle!));
+    if (states.every((state) => state === "Present")) return "present";
+    if (states.every((state) => state === "Absent")) return "absent";
+    if (states.includes("Present") && states.includes("Absent"))
+      return "partial";
+  }
+  return summary.present || summary.absent ? "pending" : "unknown";
 }

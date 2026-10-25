@@ -1,3 +1,4 @@
+import { useGlassLight } from "./useGlassLight";
 import { CAMPUS_ZONE, campusDateKey } from "./schedule";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -15,16 +16,9 @@ import {
   ShieldCheck,
   WifiOff,
   X,
-  Sparkles,
   CircleHelp,
 } from "lucide-react";
-import {
-  demoData,
-  monthKey,
-  readTheme,
-  type Dashboard,
-  type Bundle,
-} from "./data";
+import { monthKey, readTheme, type Dashboard, type Bundle } from "./data";
 import { login, logout, post, type Credentials } from "./api";
 
 import {
@@ -52,6 +46,7 @@ const pct = (value: unknown) =>
   Number.isFinite(Number(value)) ? Number(value) : 0;
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
 export default function App() {
+  useGlassLight();
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const tick = () => setClock(new Date());
@@ -65,7 +60,6 @@ export default function App() {
   const [theme, setTheme] = useState(readTheme),
     [page, setPage] = useState<Page>("overview");
   const [data, setData] = useState<Dashboard | null>(null),
-    [demo, setDemo] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [updated, setUpdated] = useState<Date | null>(null);
@@ -83,8 +77,9 @@ export default function App() {
       {},
     ),
     [bundles, setBundles] = useState<Record<string, Bundle>>({}),
-    [monthBusy, setMonthBusy] = useState(false),
-    [monthError, setMonthError] = useState("");
+    [monthLoading, setMonthLoading] = useState<Record<string, boolean>>({}),
+    [monthErrors, setMonthErrors] = useState<Record<string, string>>({});
+  const [monthRetry, setMonthRetry] = useState(0);
   const [selected, setSelected] = useState<string | null>(null),
     [help, setHelp] = useState(false);
   const monthRequests = useRef(new Set<string>()),
@@ -169,7 +164,15 @@ export default function App() {
     try {
       const next = await login(input);
       generation.current++;
-      setDemo(false);
+      if (next.dynamicContext)
+        setCalendarDate(
+          new Date(
+            next.dynamicContext.currentYear,
+            next.dynamicContext.currentMonth - 1,
+            1,
+          ),
+        );
+      setSelected(null);
       setCredentials(input);
       apply(next);
       setPage("overview");
@@ -180,14 +183,6 @@ export default function App() {
       setBusy(false);
     }
   }
-  function explore() {
-    generation.current++;
-    setCredentials(null);
-    setDemo(true);
-    apply(demoData());
-    setError("");
-    setPage("overview");
-  }
   function signOut() {
     logout();
     generation.current++;
@@ -195,20 +190,16 @@ export default function App() {
     setData(null);
     setBundles({});
     setMonths({});
-    setDemo(false);
     setSelected(null);
     setPage("overview");
     setUpdated(null);
     setError("");
     monthRequests.current.clear();
+    setMonthLoading({});
+    setMonthErrors({});
   }
   async function refresh() {
     if (busy) return;
-    if (demo) {
-      apply(demoData());
-      setNotice("Sample data refreshed. No CampX request was made.");
-      return;
-    }
     if (!credentials) return;
     const token = generation.current;
     setBusy(true);
@@ -226,20 +217,42 @@ export default function App() {
     }
   }
   const calendarKey = monthKey(calendarDate);
+  const monthBusy = !!monthLoading[calendarKey],
+    monthError = monthErrors[calendarKey] || "";
+  useEffect(() => {
+    if (page !== "calendar") return;
+    if (!months[calendarKey]) {
+      if (selected && !selected.startsWith(calendarKey)) setSelected(null);
+      return;
+    }
+    if (selected?.startsWith(calendarKey)) return;
+    const today = campusDateKey(clock);
+    const marked = Object.keys(months[calendarKey])
+      .filter(
+        (key) =>
+          key.startsWith(calendarKey) &&
+          ["present", "absent", "partial"].includes(months[calendarKey][key]),
+      )
+      .sort();
+    setSelected(
+      today.startsWith(calendarKey)
+        ? today
+        : marked.at(-1) || `${calendarKey}-01`,
+    );
+  }, [page, calendarKey, months, selected, clock]);
   useEffect(() => {
     if (
       !data ||
       page !== "calendar" ||
       months[calendarKey] ||
-      demo ||
       !credentials ||
       monthRequests.current.has(calendarKey)
     )
       return;
     const token = generation.current;
     monthRequests.current.add(calendarKey);
-    setMonthBusy(true);
-    setMonthError("");
+    setMonthLoading((prev) => ({ ...prev, [calendarKey]: true }));
+    setMonthErrors((prev) => ({ ...prev, [calendarKey]: "" }));
     post<{
       monthlyCalendar: Record<string, string>;
       dailyBundle: Record<string, Bundle>;
@@ -260,13 +273,15 @@ export default function App() {
         }
       })
       .catch((e) => {
-        if (token === generation.current) setMonthError(e.message);
+        if (token === generation.current)
+          setMonthErrors((prev) => ({ ...prev, [calendarKey]: e.message }));
       })
       .finally(() => {
         monthRequests.current.delete(calendarKey);
-        if (token === generation.current) setMonthBusy(false);
+        if (token === generation.current)
+          setMonthLoading((prev) => ({ ...prev, [calendarKey]: false }));
       });
-  }, [calendarKey, page, data, demo, credentials, months, calendarDate]);
+  }, [calendarKey, page, data, credentials, months, calendarDate, monthRetry]);
   const subjects = data?.subjectWise?.subjects || [],
     student = data?.primary?.student;
   const overall = pct(
@@ -280,19 +295,35 @@ export default function App() {
     setCalendarDate(
       (prev) => new Date(prev.getFullYear(), prev.getMonth() + offset, 1),
     );
-    setMonthError("");
   };
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [page, !!data]);
+  function selectDay(date: string) {
+    setSelected(date);
+    if (matchMedia("(max-width: 1100px)").matches)
+      requestAnimationFrame(() =>
+        document
+          .querySelector(".student-day-detail")
+          ?.scrollIntoView({
+            behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "instant"
+              : "smooth",
+            block: "start",
+          }),
+      );
+  }
   const calendar = (
     <Calendar
       date={calendarDate}
       statuses={months[calendarKey] || {}}
       bundles={bundles}
       move={moveMonth}
-      select={setSelected}
+      select={selectDay}
       selected={selected}
       loading={monthBusy}
       error={monthError}
-      demo={demo}
+      retry={() => setMonthRetry((value) => value + 1)}
     />
   );
   return (
@@ -302,7 +333,6 @@ export default function App() {
           busy={busy}
           error={error}
           login={authenticate}
-          explore={explore}
           theme={theme}
           toggleTheme={toggleTheme}
         />
@@ -366,15 +396,6 @@ export default function App() {
           </aside>
           <div className="main-shell">
             <main id="main-content">
-              {demo && (
-                <div className="demo-banner">
-                  <Sparkles size={15} />
-                  <span>Demo workspace · sample data, not your attendance</span>
-                  <button onClick={signOut}>
-                    Connect CampX <ArrowRight size={14} />
-                  </button>
-                </div>
-              )}
               {!online && (
                 <div className="alert">
                   <WifiOff size={17} />
@@ -561,6 +582,8 @@ export default function App() {
                   <DayDetails
                     date={selected}
                     bundle={selected ? bundles[selected] : undefined}
+                    loading={monthBusy}
+                    error={monthError}
                   />
                 </div>
               )}
@@ -569,9 +592,8 @@ export default function App() {
                 <Settings
                   theme={theme}
                   setTheme={setTheme}
-                  demo={demo}
                   student={student}
-                  loginId={demo ? "alex@example.test" : credentials?.loginId}
+                  loginId={credentials?.loginId}
                   classroom={data.primary?.classroom?.name}
                   semester={data.dynamicContext?.semNo}
                   install={install}
@@ -593,7 +615,7 @@ export default function App() {
                   {busy
                     ? "Fetching from CampX…"
                     : updated
-                      ? `${demo ? "Sample updated" : "Last refreshed"} at ${updated.toLocaleTimeString("en-IN", { timeZone: CAMPUS_ZONE, hour: "2-digit", minute: "2-digit" })}`
+                      ? `Last refreshed at ${updated.toLocaleTimeString("en-IN", { timeZone: CAMPUS_ZONE, hour: "2-digit", minute: "2-digit" })}`
                       : "Not refreshed"}
                 </span>
                 <span>
