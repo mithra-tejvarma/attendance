@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Usage writes and reads use a trusted backend service identity, not Firebase Auth.
+    match /usage_users/{userId}/{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

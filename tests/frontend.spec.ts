@@ -294,3 +294,61 @@ test("settings displays verified student details separately from the login used"
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(profile).toHaveCount(0);
 });
+
+test("backend app sessions replace passwords on refresh and month requests", async ({
+  page,
+}) => {
+  const calls: {
+    path: string;
+    authorization: string | undefined;
+    body: object;
+  }[] = [];
+  await page.route("**/api/**", async (route) => {
+    const request = route.request(),
+      path = new URL(request.url()).pathname;
+    calls.push({
+      path,
+      authorization: request.headers()["authorization"],
+      body: request.postDataJSON() || {},
+    });
+    if (path === "/api/logout") await route.fulfill({ status: 204 });
+    else
+      await route.fulfill({
+        json:
+          path === "/api/attendance"
+            ? { ...fixture, sessionToken: "test-only-session-token" }
+            : fixture,
+      });
+  });
+  await page.goto("/");
+  await page.getByLabel("CampX email or login ID").fill("fixture");
+  await page.getByLabel("Password", { exact: true }).fill("test-secret");
+  await page.getByRole("button", { name: "Open my dashboard" }).click();
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await expect
+    .poll(() => calls.some((c) => c.path === "/api/refresh"))
+    .toBe(true);
+  const refresh = calls.find((c) => c.path === "/api/refresh")!;
+  expect(refresh.authorization).toBe("Bearer test-only-session-token");
+  expect(refresh.body).toEqual({});
+  await page
+    .getByRole("button", { name: "Calendar", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Next month" }).click();
+  await expect
+    .poll(() => calls.some((c) => c.path === "/api/month-complete-data"))
+    .toBe(true);
+  const month = calls.find((c) => c.path === "/api/month-complete-data")!;
+  expect(month.authorization).toBe("Bearer test-only-session-token");
+  expect(JSON.stringify(month.body)).not.toContain("password");
+  expect(JSON.stringify(month.body)).not.toContain("loginId");
+  await page
+    .getByRole("button", { name: "Settings", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect
+    .poll(() => calls.some((c) => c.path === "/api/logout"))
+    .toBe(true);
+});

@@ -25,7 +25,7 @@ import {
   type Dashboard,
   type Bundle,
 } from "./data";
-import { login, post, type Credentials } from "./api";
+import { login, logout, post, type Credentials } from "./api";
 
 import {
   HelpDialog,
@@ -189,6 +189,7 @@ export default function App() {
     setPage("overview");
   }
   function signOut() {
+    logout();
     generation.current++;
     setCredentials(null);
     setData(null);

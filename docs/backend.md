@@ -1,0 +1,100 @@
+# Backend implementation and activation
+
+## What is implemented and what is verified
+
+The previous synchronous proxy has been replaced with an async FastAPI service. Existing `/api/attendance`, `/api/month-complete-data`, `/api/today-sync` contracts are retained with filtered fields. Initial login requires CampX credentials; it returns a random app session. Subsequent frontend refresh/month requests use that bearer token. No Firebase or Supabase Auth login is introduced.
+
+Automated backend checks use synthetic CampX responses. Real CampX connectivity was HTTP 200, but authenticated account inspection is still blocked: `CAMPX_LOGIN_ID` and `CAMPX_PASSWORD` have no saved development bindings. The Supabase project is `sknfnvupcgoarfzrfwvl`; its HTTPS endpoint responded 401 with the expected missing-API-key message. Its service key and Firebase server credentials are absent. **No claim is made that real login, the migration, or remote database/analytics writes have passed.**
+
+Expected upstream fields come from the original repository implementation, not newly captured live responses. Strict validation deliberately returns `502 upstream_schema` rather than silently presenting empty or false attendance when those assumptions differ. Login supports CampX session cookies and `accessToken` / `access_token` at the root or under `data`; other auth formats require inspection. The existing browser client identifier is retained, with `CAMPX_CLIENT_TOKEN` as an override if rotated.
+
+## Local development
+
+Use Python 3.12, Node 24, and the existing checkout.
+
+```sh
+python3 -m venv /workspace/.attendance-venv
+/workspace/.attendance-venv/bin/python -m pip install -r requirements-dev.txt
+/workspace/.attendance-venv/bin/python -m pytest -q
+/workspace/.attendance-venv/bin/python -m ruff check backend backend_tests scripts server.py
+/workspace/.attendance-venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8001
+```
+
+Then start the frontend with `VITE_API_BASE_URL=http://127.0.0.1:8001 npm run dev`. For port 8000 simply substitute it in both commands. Existing public frontend builds continue to point to the Render API unless rebuilt with an override.
+
+`APP_ENV=development` (default) allows a bounded, process-local in-memory store. This verifies the workflow without credentials but loses sessions/snapshots on restart and cannot coordinate two servers. Production refuses to start without shared Supabase storage. Memory mode is not a production-ready deployment.
+
+`GET /` is liveness and compatible with the existing cron ping. `GET /health/ready` verifies configured table access (or explicitly reports `development-memory`). Readiness is rate-limited and does not perform a CampX login or claim Firebase connectivity.
+
+## Required live CampX check
+
+Enter personal development values for `CAMPX_LOGIN_ID` and `CAMPX_PASSWORD` securely in environment settings. Do not use shell literals, commit them, or put them in deployment configuration. Then run:
+
+```sh
+/workspace/.attendance-venv/bin/python -m scripts.inspect_campx
+```
+
+The inspector performs one login and five read-only data requests, reports response field shapes/types and array counts, and runs normalizers. It never prints values, cookies, tokens, or student profile contents. It does not persist raw account responses. Without variables it exits 2 with a precise blocked status. Unsupported live shapes must be mapped and retested before production rollout. Verify recorded IDs, session expiry, electives/lab groups, corrected attendance, empty timetables and class matching with actual authorized accounts; one account cannot establish whole-section invariants.
+
+## Supabase activation
+
+Use **one shared production project** for both backend instances.
+
+1. Use `SUPABASE_URL=https://sknfnvupcgoarfzrfwvl.supabase.co`. Apply `supabase/migrations/202610240001_private_attendance.sql` after review, preferably in a dedicated project. No migration is automatically applied.
+2. Securely configure `SUPABASE_SERVICE_ROLE_KEY` using the project's server-only legacy service-role key. This adapter does not assume newer `sb_secret_` keys can be used as bearer JWTs. Never expose this key to Vite, the browser, or GitHub.
+3. Generate a persistent Fernet key in your own secure configuration workflow: `Fernet.generate_key()` from `cryptography.fernet`. Enter it as `CAMPX_ENCRYPTION_KEY` in server secret settings. It must be identical on both servers. Never regenerate on each boot. Rotating it requires revoking existing sessions or re-encrypting their connections.
+4. Set `APP_ENV=production`, `ALLOWED_ORIGINS=https://attendance.varmalabs.tech`. Additional origins must be explicit. These are runtime/server variables, not `VITE_` variables.
+5. Check `/health/ready` and run an authenticated login, snapshot read, refresh and logout against the deployed service. `render.yaml` is a reviewable deployment blueprint; it has not been applied.
+
+Cloud proxy-backed credentials are not interchangeable with raw encryption keys or a service-account private key. Fernet and local OAuth signing need the real value in the server's process. Use the platform's supported direct secret injection or Render server secret settings. Do not declare a placeholder-only proxy secret for local cryptography.
+
+Stored data:
+
+- `students`: deterministic app UUID from verified CampX institution + student ID (or official roll number), and an allowlisted profile.
+- `app_sessions`: SHA-256 hash of a random 256-bit app token, verified student context, expiry, and **encrypted CampX cookies/token**. No CampX password is persisted.
+- `attendance_snapshots`: versioned filtered dashboard, selected month, or selected day. No app token or upstream login response is included. Invalid upstream data never replaces the last successful snapshot.
+- `student_refresh_leases`: an atomic 120-second per-student lease, shared across servers. Duplicate refreshes return 409 rather than doubling upstream traffic. Callers retain their current data and can retry; responses are not automatically fanned out to concurrent tabs.
+
+Tables have RLS enabled and no browser grants/policies. Only backend `service_role` access is permitted. Every private read derives the student UUID from the app session; no arbitrary browser-supplied student UUID is accepted. Browser classroom/semester hints are compared against verified context, never trusted. `service_role` bypasses RLS, so backend authorization tests remain essential.
+
+The initial snapshot format intentionally avoids inventing unstable per-session database IDs before real response validation. Timetables remain student-scoped until teaching-group equivalence is verified. No cross-student attendance or credential sharing occurs.
+
+A successful session refresh persists rotated upstream cookies/tokens. Upstream expiry/rejection requires reconnection; passwords are not retained for automatic reauthentication. App sessions default to two hours and do not slide indefinitely. Upstream logout/revocation support has not been established; app logout revokes only the app token.
+
+Plan retention before inviting users. An administrator should remove expired app sessions/leases and old month/day snapshots, for example:
+
+```sql
+delete from public.app_sessions where expires_at < now();
+delete from public.student_refresh_leases where expires_at < now();
+delete from public.attendance_snapshots
+where kind <> 'dashboard' and fetched_at < now() - interval '30 days';
+```
+
+No cleanup schedule, account deletion UI, normalized permanent attendance history, or notification outbox has been deployed. Establish user consent, retention, deletion and recovery procedures before wider rollout. Production backups and guaranteed uptime are not provided by this code or free plans.
+
+## Firebase usage, project attendance-90c12
+
+Optional backend-only analytics are implemented but disabled by default. Set `FIREBASE_USAGE_ENABLED=true` only after provisioning Firestore, a least-privilege service identity with document-write access, and server credentials (`FIREBASE_SERVICE_ACCOUNT_JSON`, or supported Google Application Default Credentials). The project ID alone is insufficient. No Firebase Auth is used.
+
+The backend writes daily aggregates to `usage_users/{pseudonymousStudentUuid}/days/{YYYY-MM-DD}`. Each event performs one atomic daily-document update with operation counts, CampX call counts, successful/failed request counts and `lastActiveAt`. Successful login also updates a pseudonymous parent user document, making total verified-user counts available without scanning daily records. Login uses two document writes; other tracked operations use one. No email, password, profile, attendance data, or token is sent. Distinct student IDs with a document for a date give that day's active users; summing request counts does not give unique users. These count backend operations, not app openings or button clicks. Unknown/failed logins before identity verification do not count as active students.
+
+A bounded async queue keeps analytics off the attendance response path. Events can be dropped on queue overflow, write failure or process shutdown. Metrics are best-effort, **not billing-grade exact counts**. There is no analytics dashboard or scheduled aggregation job yet.
+
+`firestore.rules` is a **template** denying browser access to usage records. Merge it with any existing rules; do not overwrite unrelated project policies blindly. The trusted service identity bypasses these client rules. Firebase rules and credentials have not been deployed or tested remotely. Required HTTPS destinations are `firestore.googleapis.com` and `oauth2.googleapis.com`; the Supabase project host is also required when enabling that adapter. Preserve existing network policy when adding destinations.
+
+## Endpoints and operational limits
+
+- `POST /api/attendance`: CampX login + current dashboard; returns `sessionToken`, `sessionExpiresAt` plus the frontend-compatible dashboard. Credentials are sent once. Treat the response as private.
+- `POST /api/refresh`: bearer-authenticated current dashboard; no password body.
+- `POST /api/month-complete-data`: bearer + `{month, year}`; optional classroom/semester must match verified context. Legacy credential bodies remain supported.
+- `POST /api/today-sync`: bearer + `{month, year, date}`; date must be valid and belong to that month. Legacy credential bodies remain supported.
+- `GET /api/me/dashboard`: bearer-authenticated saved dashboard, explicitly labeled `source: saved`, with original fetch time; no CampX calls. The frontend doesn't restore sessions across browser reloads yet.
+- `POST /api/logout`: revoke the bearer token.
+
+The frontend keeps the bearer token only in memory and strips login/password from session requests. Settings retains the login identifier for display. Error responses and validation errors do not echo submitted credentials. API responses have `Cache-Control: no-store`. Tokens are never accepted in URLs. Cross-site cookies are unnecessary for this version; HTTP-only same-site cookies remain a future option. An XSS could still steal an in-memory token, so production CSP and dependency/security review remain necessary.
+
+Initial login uses six CampX requests; subsequent full refreshes use five, and session month fetches use three. Required independent requests run concurrently after context is established. Defaults: 16 upstream requests and 8 admitted operations per process, 12-second HTTP timeout (5-second connect), 50-second overall operation budget. Capacity is rejected quickly with 503 instead of building an unbounded queue. No automatic retry storm, keep-alive circumvention or upstream TLS bypass is used.
+
+Per-account/per-client/per-student rate limits are process-local. Shared refresh leases coordinate two servers, but rate budgets do not. Before horizontal rollout, evaluate a shared rate limiter and configure trusted proxy addresses correctly; never trust arbitrary `X-Forwarded-For` headers. One Uvicorn worker is recommended on a small Render free instance. These bounds are safety defaults, not proven CampX limits or capacity guarantees. Do not promise a student count or latency before an authorized load pilot.
+
+No CampX webhook, unattended poller, FCM push sender or notification delivery is implemented in this change. Those need verified response identities, consent, and a durable job/outbox design.

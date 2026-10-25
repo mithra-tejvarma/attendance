@@ -1,6 +1,6 @@
 # Attendance · Varma Labs
 
-React 19 + TypeScript + Vite frontend for the existing FastAPI attendance API. Responsive light/dark design, floating mobile navigation, subject summaries, on-demand calendar, local what-if planner, and an installable PWA shell. No Firebase authentication is used.
+React 19 + TypeScript + Vite frontend with an async FastAPI attendance backend. Responsive light/dark design, floating mobile navigation, subject summaries, on-demand calendar, local what-if planner, and an installable PWA shell. No Firebase authentication is used.
 
 ## Develop
 
@@ -42,11 +42,11 @@ The workflow intentionally has no push trigger. Implementation does not publish 
 
 `firebase.json` targets the built `dist` directory and `.firebaserc` selects `attendance-90c12`. Build, authenticate using an authorized Firebase account, and run `firebase deploy --only hosting --project attendance-90c12`. Configure the custom domain in Firebase Hosting and update DNS using the records Firebase provides. Choose one hosting target for the domain, not both.
 
-No Firebase secrets, Admin SDK keys, analytics writes, or push backend have been added. A Firebase project ID is public configuration, not authentication.
+No Firebase credentials or push backend have been added. Optional backend usage analytics are implemented but disabled until configured. A Firebase project ID is public configuration, not authentication.
 
 ## Authentication and data boundaries
 
-- Login calls the existing `/api/attendance` endpoint. Credentials remain in React memory for this tab; they are not saved in localStorage or cookies. Reloading requires signing in again until server sessions are implemented.
+- Login calls `/api/attendance`. The new backend returns an opaque app session; subsequent refresh/month requests use that bearer token, not the password. Tokens and credentials remain in memory for this tab, never localStorage or cookies. Reloading requires signing in again; sessions are not restored across browser reloads.
 - Legacy CampX browser credentials and attendance caches are cleared on first load of this version. Their old cookie deletion is scoped to the current host and `/` path; host/parent-domain cookies created elsewhere need corresponding server-side cleanup.
 - The previous HTML interface is preserved in `docs/legacy-interface.html` as a migration reference. It is not included in `dist` and should not be served: it contains the previous plaintext browser password behavior.
 - Current-month data is loaded at login. Other months load only when selected. No adjacent-month prefetch exists.
@@ -59,11 +59,9 @@ No Firebase secrets, Admin SDK keys, analytics writes, or push backend have been
 
 ## Future work and rollout limits
 
-Supabase sessions/data, Firebase usage records and FCM delivery are separate backend phases and are not connected yet. Notification settings intentionally do not request permission. Installation is browser-dependent; test Android, desktop and iPhone home-screen flows on real devices.
+The async backend, private Supabase adapter/migration, encrypted upstream sessions, saved snapshots, and optional Firebase usage writer are implemented. They are not remotely configured or deployed. FCM delivery, unattended sync jobs and an analytics UI remain pending. See [backend activation and verification](docs/backend.md) for exact contracts, limits, tests, configuration and blockers.
 
-The backend still has its original synchronous requests, broad CORS configuration, no production session system, and upstream error fallbacks. Before a wider rollout, implement bounded concurrent requests, explicit timeouts, verified student identity, per-user authorization, rate limits, restricted production CORS, reliable failure semantics, encrypted upstream session handling and a durable sync/notification outbox. This frontend does not solve those server limitations.
-
-For future sessions, prefer same-site `attendance.varmalabs.tech` and `api.varmalabs.tech` with secure HTTP-only cookies and explicit CSRF/CORS handling. Both backend instances must share sessions and job leases if a second server is introduced.
+Development runs with bounded in-memory storage; production explicitly requires Supabase. Live CampX credential bindings, the Supabase service key/encryption key and Firebase server credentials are missing, so automated fixture checks are not proof of live readiness. Backend client limits, error handling and session behavior need a small authorized live pilot before broad rollout.
 
 ## Release updates and performance
 
