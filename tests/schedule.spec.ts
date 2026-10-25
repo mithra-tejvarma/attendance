@@ -97,3 +97,46 @@ test("overview is focused and the live class changes without fetching attendance
   await page.clock.fastForward(31 * 60 * 1000);
   await expect(page.locator(".class-live")).toContainText("Cloud Computing");
 });
+
+test("normalized exact links distinguish repeated subjects and cancelled classes are never live", () => {
+  const first = {
+      id: "slot-1",
+      subjectId: "math",
+      fromTime: "09:00",
+      toTime: "10:00",
+    },
+    second = {
+      id: "slot-2",
+      subjectId: "math",
+      fromTime: "11:00",
+      toTime: "12:00",
+    };
+  const bundle: Bundle = {
+    timetable: [first, second],
+    attendance: [
+      {
+        id: "record-1",
+        classroomTimetableId: "slot-1",
+        subjectId: "math",
+        isAbsent: 0,
+      },
+      {
+        id: "record-2",
+        classroomTimetableId: "slot-2",
+        subjectId: "math",
+        isAbsent: 1,
+      },
+    ],
+    hasRecord: true,
+  };
+  expect(attendanceFor(first, bundle)).toBe("Present");
+  expect(attendanceFor(second, bundle)).toBe("Absent");
+  const cancelled = { ...first, isSuspended: true };
+  expect(classPhase(cancelled, new Date("2026-10-24T04:00:00Z"))).toBe(
+    "Cancelled",
+  );
+  expect(classProgress(cancelled, new Date("2026-10-24T04:00:00Z"))).toBe(0);
+  expect(attendanceFor({ ...first, attendanceRequired: false }, bundle)).toBe(
+    "Not required",
+  );
+});

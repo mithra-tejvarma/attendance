@@ -22,6 +22,8 @@ from backend.normalize import (
     subject_data,
 )
 
+from .runtime_env import load_development_env
+
 
 def shape(value, depth=0):
     if depth > 6:
@@ -46,6 +48,7 @@ def shape(value, depth=0):
 
 
 async def main():
+    load_development_env()
     login_id, password = os.getenv("CAMPX_LOGIN_ID"), os.getenv("CAMPX_PASSWORD")
     if not login_id or not password:
         print(
@@ -110,7 +113,7 @@ async def main():
             primary_data(primary)
             subject_data(raw[0])
             calendar_data(raw[1], now.year, now.month)
-            daily_bundle(raw[2], raw[3], now.year, now.month)
+            daily_bundle(raw[2], raw[3], now.year, now.month, student_context=ctx)
             report.update(
                 status="validated",
                 requests=client.calls,

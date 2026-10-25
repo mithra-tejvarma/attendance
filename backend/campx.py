@@ -147,6 +147,12 @@ class Campx:
         )
         if on_response is not None:
             on_response(data)
+        if isinstance(data, dict) and data.get("isMfaRequired") is True:
+            raise ServiceError(
+                401,
+                "campx_mfa_required",
+                "CampX requires additional verification. Complete it through CampX before reconnecting.",
+            )
         bearer = None
         if isinstance(data, dict):
             for container in (data, data.get("data")):

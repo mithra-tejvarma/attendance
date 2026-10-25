@@ -428,9 +428,11 @@ export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
                     </span>
                   </div>
                   <p className="slot-note">
-                    {status === "Not marked"
-                      ? "No confirmed attendance record"
-                      : `Attendance marked ${status.toLowerCase()}`}
+                    {status === "Not required"
+                      ? "Attendance is not required for this class"
+                      : status === "Not marked"
+                        ? "No confirmed attendance record"
+                        : `Attendance marked ${status.toLowerCase()}`}
                   </p>
                   {live && (
                     <div

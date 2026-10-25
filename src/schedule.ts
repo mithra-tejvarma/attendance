@@ -33,6 +33,7 @@ function minutes(value: unknown) {
   return h * 60 + m;
 }
 export function classPhase(slot: Slot, now: Date) {
+  if (slot.isSuspended === true) return "Cancelled";
   const start = minutes(slot.fromTime),
     end = minutes(slot.toTime);
   if (start === null || end === null || end <= start) return "Time unavailable";
@@ -40,6 +41,7 @@ export function classPhase(slot: Slot, now: Date) {
   return clock < start ? "Upcoming" : clock < end ? "Live now" : "Completed";
 }
 export function classProgress(slot: Slot, now: Date) {
+  if (slot.isSuspended === true) return 0;
   const start = minutes(slot.fromTime),
     end = minutes(slot.toTime);
   if (start === null || end === null || end <= start) return 0;
@@ -61,6 +63,7 @@ const same = (a: unknown, b: unknown) =>
   b !== null &&
   String(a) === String(b);
 export function attendanceFor(slot: Slot, bundle: Bundle) {
+  if (slot.attendanceRequired === false) return "Not required";
   const records = bundle.attendance || [];
   const exact = records.filter((r) =>
     ["classroomTimetableId", "timetableId", "slotId"].some(

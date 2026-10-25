@@ -4,9 +4,15 @@
 
 The previous synchronous proxy has been replaced with an async FastAPI service. Existing `/api/attendance`, `/api/month-complete-data`, `/api/today-sync` contracts are retained with filtered fields. Initial login requires CampX credentials; it returns a random app session. Subsequent frontend refresh/month requests use that bearer token. No Firebase or Supabase Auth login is introduced.
 
-Automated backend checks use synthetic CampX responses. Real CampX connectivity was HTTP 200, but authenticated account inspection is still blocked: `CAMPX_LOGIN_ID` and `CAMPX_PASSWORD` have no saved development bindings. The Supabase project is `sknfnvupcgoarfzrfwvl`; its HTTPS endpoint responded 401 with the expected missing-API-key message. Its service key and Firebase server credentials are absent. **No claim is made that real login, the migration, or remote database/analytics writes have passed.**
+Automated checks use synthetic payloads, and the supplied account has now also been used for read-only live validation. CampX authentication and all five data endpoints passed schema normalization. The application login, saved-dashboard read, session refresh, today's synchronization, logout and revoked-access check passed with explicitly isolated development memory storage. No raw personal payload was committed or persisted as a fixture.
 
-Expected upstream fields come from the original repository implementation, not newly captured live responses. Strict validation deliberately returns `502 upstream_schema` rather than silently presenting empty or false attendance when those assumptions differ. Login supports CampX session cookies and `accessToken` / `access_token` at the root or under `data`; other auth formats require inspection. The existing browser client identifier is retained, with `CAMPX_CLIENT_TOKEN` as an override if rotated.
+Live inspection verified that `classroom-timetables.studentAttendance` carries the personal attendance record tied to the exact timetable row. Its `id` matches the corresponding `my-classes.id`; `classroomTimetableId` matches the timetable row's `id`. Critically, the embedded boolean `status` has **absence polarity**: `true` corresponds to `isAbsent=1` (absent), `false` corresponds to `isAbsent=0` (present). The adapter verifies student, classroom, semester, subject, date and timetable linkage, enriches/deduplicates attendance by record ID, and refuses inconsistent cross-endpoint flags. This avoids confusing repeated same-subject classes. Embedded student/faculty records are never forwarded wholesale. `hasAttendance=false` becomes “Not required”; suspended classes do not become “Live now.”
+
+The Supabase service-role key authenticates to project `sknfnvupcgoarfzrfwvl`, but table access returned `404 PGRST205`: the prepared schema is not yet installed. The REST service key does not provide a general SQL/DDL execution channel. Apply the reviewed migration once in the Supabase SQL Editor, then run readiness and persistent write/read checks. **Remote database persistence and Firebase analytics remain unverified.**
+
+Login currently succeeds through CampX cookies. The response also includes a nested `session.token`; the adapter does not guess that this is a bearer token when working cookies are available. MFA-required responses are rejected with an explicit message, never bypassed. The browser client identifier remains configurable through `CAMPX_CLIENT_TOKEN`.
+
+The provided development credentials and service key are stored in a private mode-0600 runtime file outside the checkout at `/workspace/.attendance-secrets/attendance.env`. A persistent Fernet key was generated there without printing it. This is a local shared-workspace configuration, not a write to the platform secret vault or Render settings. Do not copy its contents into GitHub, a frontend build, or setup scripts. After reviewing this file's use, authorized workspace tasks can source it without displaying values. Individual students must still supply their own CampX login; this account is never a default for other users.
 
 ## Local development
 
@@ -17,7 +23,7 @@ python3 -m venv /workspace/.attendance-venv
 /workspace/.attendance-venv/bin/python -m pip install -r requirements-dev.txt
 /workspace/.attendance-venv/bin/python -m pytest -q
 /workspace/.attendance-venv/bin/python -m ruff check backend backend_tests scripts server.py
-/workspace/.attendance-venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8001
+./scripts/dev_backend.sh
 ```
 
 Then start the frontend with `VITE_API_BASE_URL=http://127.0.0.1:8001 npm run dev`. For port 8000 simply substitute it in both commands. Existing public frontend builds continue to point to the Render API unless rebuilt with an override.
@@ -28,13 +34,15 @@ Then start the frontend with `VITE_API_BASE_URL=http://127.0.0.1:8001 npm run de
 
 ## Required live CampX check
 
-Enter personal development values for `CAMPX_LOGIN_ID` and `CAMPX_PASSWORD` securely in environment settings. Do not use shell literals, commit them, or put them in deployment configuration. Then run:
+For this workspace the private runtime file is already present. The development launcher and inspection scripts load it automatically without printing values, preserve existing injected variables, and skip it entirely when `APP_ENV=production`. Group/world-readable files and unsupported assignments are rejected. On other machines supply personal `CAMPX_LOGIN_ID` and `CAMPX_PASSWORD` through secure runtime settings; never commit them or deploy this development account as a default.
+
+Run:
 
 ```sh
 /workspace/.attendance-venv/bin/python -m scripts.inspect_campx
 ```
 
-The inspector performs one login and five read-only data requests, reports response field shapes/types and array counts, and runs normalizers. It never prints values, cookies, tokens, or student profile contents. It does not persist raw account responses. Without variables it exits 2 with a precise blocked status. Unsupported live shapes must be mapped and retested before production rollout. Verify recorded IDs, session expiry, electives/lab groups, corrected attendance, empty timetables and class matching with actual authorized accounts; one account cannot establish whole-section invariants.
+The inspector performs one login and five read-only data requests, reports response field shapes/types and array counts, and runs normalizers. It never prints values, cookies, tokens, or student profile contents. It does not persist raw account responses. `python -m scripts.audit_campx` separately cross-checks record relationships and flag polarity, reporting aggregate checks rather than personal values. Without variables it exits 2 with a precise blocked status. Unsupported live shapes must be mapped and retested before production rollout. Verify recorded IDs, session expiry, electives/lab groups, corrected attendance, empty timetables and class matching with actual authorized accounts; one account cannot establish whole-section invariants.
 
 ## Supabase activation
 

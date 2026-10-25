@@ -683,3 +683,167 @@ def test_unsupported_login_session_is_not_treated_as_success(setup):
     assert response.json()["code"] == "upstream_auth_schema"
     assert "PRIVATE" not in response.text
     assert len(fake.calls) == 1
+
+
+def test_live_timetable_status_polarity_and_exact_links_are_normalized():
+    from backend.normalize import daily_bundle
+
+    ctx = {"campxStudentId": "student", "classroomId": "room", "semNo": "7"}
+
+    def slot(identifier, record_id, status, start):
+        return {
+            "id": identifier,
+            "subjectId": "math",
+            "sessionDate": "2026-10-01",
+            "fromTime": start,
+            "toTime": "12:00",
+            "studentAttendance": {
+                "id": record_id,
+                "studentId": "student",
+                "classroomId": "room",
+                "semNo": 7,
+                "subjectId": "math",
+                "classroomTimetableId": identifier,
+                "date": "2026-10-01",
+                "hasAttendance": True,
+                "status": status,
+            },
+        }
+
+    # Live cross-check established that True means ABSENT, not present.
+    slots = [
+        slot("slot-1", "record-1", False, "09:00"),
+        slot("slot-2", "record-2", True, "11:00"),
+    ]
+    records = [
+        {"id": "record-1", "date": "2026-10-01", "subjectId": "math", "isAbsent": 0},
+        {"id": "record-2", "date": "2026-10-01", "subjectId": "math", "isAbsent": 1},
+    ]
+    bundle = daily_bundle(records, slots, 2026, 10, student_context=ctx)["2026-10-01"]
+    assert len(bundle["attendance"]) == 2
+    assert [
+        (r["classroomTimetableId"], r["isAbsent"]) for r in bundle["attendance"]
+    ] == [("slot-1", 0), ("slot-2", 1)]
+    assert "studentAttendance" not in json.dumps(bundle)
+    assert "studentId" not in json.dumps(bundle)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("studentId", "someone-else"),
+        ("classroomId", "other-room"),
+        ("semNo", "9"),
+        ("classroomTimetableId", "other-slot"),
+        ("subjectId", "other-subject"),
+    ],
+)
+def test_foreign_or_mismatched_embedded_attendance_is_rejected(field, value):
+    from backend.normalize import daily_bundle
+
+    ctx = {"campxStudentId": "student", "classroomId": "room", "semNo": "7"}
+    record = {
+        "id": "record",
+        "studentId": "student",
+        "classroomId": "room",
+        "semNo": 7,
+        "subjectId": "math",
+        "classroomTimetableId": "slot",
+        "date": "2026-10-01",
+        "hasAttendance": True,
+        "status": False,
+    }
+    record[field] = value
+    slot = {
+        "id": "slot",
+        "subjectId": "math",
+        "sessionDate": "2026-10-01",
+        "studentAttendance": record,
+    }
+    with pytest.raises(ServiceError):
+        daily_bundle([], [slot], 2026, 10, student_context=ctx)
+
+
+def test_conflicting_live_endpoints_do_not_guess_attendance():
+    from backend.normalize import daily_bundle
+
+    ctx = {"campxStudentId": "student", "classroomId": "room", "semNo": "7"}
+    embedded = {
+        "id": "record",
+        "studentId": "student",
+        "classroomId": "room",
+        "semNo": 7,
+        "subjectId": "math",
+        "classroomTimetableId": "slot",
+        "date": "2026-10-01",
+        "hasAttendance": True,
+        "status": True,
+    }
+    timetable = [
+        {
+            "id": "slot",
+            "subjectId": "math",
+            "sessionDate": "2026-10-01",
+            "studentAttendance": embedded,
+        }
+    ]
+    records = [
+        {"id": "record", "date": "2026-10-01", "subjectId": "math", "isAbsent": 0}
+    ]
+    with pytest.raises(ServiceError):
+        daily_bundle(records, timetable, 2026, 10, student_context=ctx)
+
+
+def test_mfa_requirement_is_not_bypassed(setup):
+    client, fake, _, _ = setup
+    fake.responses[LOGIN] = lambda _: httpx.Response(
+        201,
+        json={"isMfaRequired": True},
+        headers={"Set-Cookie": "pending=verification; Secure; Path=/"},
+    )
+    response = client.post(
+        "/api/attendance", json={"loginId": "fixture", "password": "  valid password  "}
+    )
+    assert response.status_code == 401
+    assert response.json()["code"] == "campx_mfa_required"
+    assert len(fake.calls) == 1
+
+
+def test_development_runtime_preserves_injected_values(monkeypatch, tmp_path):
+    from scripts.runtime_env import load_development_env
+
+    path = tmp_path / "runtime.env"
+    path.write_text("CAMPX_LOGIN_ID=fixture\nCAMPX_PASSWORD='fixture value'\n")
+    path.chmod(0o600)
+    monkeypatch.setenv("BACKEND_ENV_FILE", str(path))
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("CAMPX_LOGIN_ID", "existing-binding")
+    monkeypatch.delenv("CAMPX_PASSWORD", raising=False)
+    load_development_env()
+    assert __import__("os").environ["CAMPX_LOGIN_ID"] == "existing-binding"
+    assert __import__("os").environ["CAMPX_PASSWORD"] == "fixture value"
+
+
+def test_production_never_loads_shared_development_credentials(monkeypatch, tmp_path):
+    from scripts.runtime_env import load_development_env
+
+    path = tmp_path / "runtime.env"
+    path.write_text("CAMPX_PASSWORD=fixture\n")
+    path.chmod(0o600)
+    monkeypatch.setenv("BACKEND_ENV_FILE", str(path))
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("CAMPX_PASSWORD", raising=False)
+    load_development_env()
+    assert "CAMPX_PASSWORD" not in __import__("os").environ
+
+
+def test_insecure_development_runtime_is_rejected(monkeypatch, tmp_path):
+    from scripts.runtime_env import load_development_env
+
+    path = tmp_path / "runtime.env"
+    path.write_text("CAMPX_PASSWORD=fixture\n")
+    path.chmod(0o644)
+    monkeypatch.setenv("BACKEND_ENV_FILE", str(path))
+    monkeypatch.setenv("APP_ENV", "development")
+    with pytest.raises(ValueError, match="private permissions"):
+        load_development_env()

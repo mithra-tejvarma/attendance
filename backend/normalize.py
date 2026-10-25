@@ -59,7 +59,12 @@ def context(primary):
     semester = identifier(student.get("semNo"))
     upstream_id = identifier(student.get("id") or student.get("rollNo"))
     uid = str(uuid5(NAMESPACE_URL, "campx:aits:" + upstream_id))
-    return {"studentId": uid, "classroomId": classroom, "semNo": semester}
+    return {
+        "studentId": uid,
+        "classroomId": classroom,
+        "semNo": semester,
+        "campxStudentId": upstream_id,
+    }
 
 
 def primary_data(raw):
@@ -159,6 +164,9 @@ def slot_data(raw):
         }
         if subject.get("id") is not None:
             result["subject"]["id"] = identifier(subject["id"])
+    for key in ("completed", "isSuspended"):
+        if isinstance(raw.get(key), bool):
+            result[key] = raw[key]
     if raw.get("orderNumber") is not None:
         result["orderNumber"] = number(raw["orderNumber"], integer=True)
     # Unknown flags remain unmarked. Missing records never become absent.
@@ -167,7 +175,9 @@ def slot_data(raw):
     return result
 
 
-def daily_bundle(records, timetable, year, month, only_date=None):
+def daily_bundle(
+    records, timetable, year, month, only_date=None, *, student_context=None
+):
     records, timetable = list_response(records), list_response(timetable)
     output = {}
     days = (
@@ -189,6 +199,79 @@ def daily_bundle(records, timetable, year, month, only_date=None):
             if day not in output:
                 raise schema_error()
             output[day][destination].append(slot_data(raw))
+    # Live CampX verification: timetable.studentAttendance.status uses the same
+    # polarity as my-classes.isAbsent: True = absent, False = present.
+    # It is tied to the exact timetable row; subject-only matching is insufficient.
+    for raw in timetable:
+        attendance = raw.get("studentAttendance")
+        if attendance is None:
+            continue
+        if not isinstance(attendance, dict) or student_context is None:
+            raise schema_error()
+        expected = {
+            "studentId": student_context.get("campxStudentId"),
+            "classroomId": student_context.get("classroomId"),
+            "semNo": student_context.get("semNo"),
+            "classroomTimetableId": raw.get("id"),
+            "subjectId": raw.get("subjectId") or (raw.get("subject") or {}).get("id"),
+        }
+        if any(
+            value is None or identifier(attendance.get(key)) != identifier(value)
+            for key, value in expected.items()
+        ):
+            raise schema_error()
+        day = iso_date(raw.get("sessionDate"))
+        if iso_date(attendance.get("date")) != day:
+            raise schema_error()
+        if not isinstance(attendance.get("hasAttendance"), bool):
+            raise schema_error()
+        slot = next(
+            (
+                row
+                for row in output[day]["timetable"]
+                if row.get("id") == identifier(raw.get("id"))
+            ),
+            None,
+        )
+        if slot is None:
+            raise schema_error()
+        slot["attendanceRequired"] = attendance["hasAttendance"]
+        if not attendance["hasAttendance"]:
+            continue
+        if not isinstance(attendance.get("status"), bool):
+            raise schema_error()
+        record_id = identifier(attendance.get("id"))
+        matches = [
+            row for row in output[day]["attendance"] if row.get("id") == record_id
+        ]
+        if len(matches) > 1:
+            raise schema_error()
+        absent = int(attendance["status"])
+        if matches:
+            record = matches[0]
+            if record.get("isAbsent") is not None and record["isAbsent"] != absent:
+                raise schema_error()
+            if record.get("subjectId") is not None and record[
+                "subjectId"
+            ] != identifier(expected["subjectId"]):
+                raise schema_error()
+        else:
+            record = {"id": record_id}
+            output[day]["attendance"].append(record)
+        record.update(
+            {
+                "classroomTimetableId": slot["id"],
+                "subjectId": identifier(expected["subjectId"]),
+                "isAbsent": absent,
+            }
+        )
+        for key in ("fromTime", "toTime"):
+            if key in slot:
+                record[key] = slot[key]
+        if "subjectName" not in record:
+            name = slot.get("subjectName") or (slot.get("subject") or {}).get("name")
+            if name:
+                record["subjectName"] = name
     for bundle in output.values():
         bundle["hasRecord"] = bool(bundle["attendance"])
         bundle["timetable"].sort(

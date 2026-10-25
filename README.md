@@ -53,7 +53,7 @@ No Firebase credentials or push backend have been added. Optional backend usage 
 - Navigation, theme changes and planner calculations are local; network refreshes never disable navigation. Network latency is not guaranteed to be zero.
 - Demo mode is clearly labeled and never contacts CampX. No sample data is substituted into a live account.
 - Missing calendar records are unknown, not absent. Unknown status labels stay unclassified until the upstream schema is verified.
-- Timetable names support the known/fallback shapes. Class-level present/absent uses the legacy `isAbsent` flag (0 = present, 1 = absent). Records match by explicit session identity, subject plus time, or a subject that occurs only once in both datasets. Missing flags, conflicting records and ambiguous repeated subjects stay unmarked. Real-account payload validation is still pending.
+- Timetable names support the known/fallback shapes. Class-level present/absent uses the legacy `isAbsent` flag (0 = present, 1 = absent). Records match by explicit session identity, subject plus time, or a subject that occurs only once in both datasets. Missing flags, conflicting records and ambiguous repeated subjects stay unmarked. Live responses now verify the embedded per-timetable personal record; the adapter uses its exact class link and absence-polarity flag.
 - Planner projections use attended/total counts and a 75% reference. They do not implement the legacy full-semester projection or institution-specific exemptions.
 - Attendance is held in memory, not persisted offline. The service worker caches only public UI assets. Closing/reloading offline does not restore personal attendance.
 
@@ -61,7 +61,7 @@ No Firebase credentials or push backend have been added. Optional backend usage 
 
 The async backend, private Supabase adapter/migration, encrypted upstream sessions, saved snapshots, and optional Firebase usage writer are implemented. They are not remotely configured or deployed. FCM delivery, unattended sync jobs and an analytics UI remain pending. See [backend activation and verification](docs/backend.md) for exact contracts, limits, tests, configuration and blockers.
 
-Development runs with bounded in-memory storage; production explicitly requires Supabase. Live CampX credential bindings, the Supabase service key/encryption key and Firebase server credentials are missing, so automated fixture checks are not proof of live readiness. Backend client limits, error handling and session behavior need a small authorized live pilot before broad rollout.
+Development runs with bounded in-memory storage; production explicitly requires Supabase. Live CampX checks have passed using the provided private development runtime. The Supabase service key works, but the schema migration is not applied; Firebase server credentials remain missing. Database persistence and analytics are therefore not activated or verified. Backend client limits, error handling and session behavior need a small authorized live pilot before broad rollout.
 
 ## Release updates and performance
 

@@ -194,7 +194,9 @@ class Service:
             "primary": primary,
             "subjectWise": subjects,
             "monthlyCalendar": calendar_data(monthly, year, month),
-            "dailyBundle": daily_bundle(records, timetable, year, month),
+            "dailyBundle": daily_bundle(
+                records, timetable, year, month, student_context=ctx
+            ),
             "dynamicContext": {
                 "classroomId": ctx["classroomId"],
                 "semNo": ctx["semNo"],
@@ -372,6 +374,7 @@ class Service:
                                 body.year,
                                 body.month,
                                 first if operation == "today" else None,
+                                student_context=ctx,
                             )
                             data = {
                                 "monthlyCalendar": calendar_data(
