@@ -50,8 +50,11 @@ test("account navigation, planner, theme persistence and sign out", async ({
     page.getByRole("heading", { name: "Every subject, in focus." }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Planner", exact: true })
+    .getByRole("button", { name: "Playground", exact: true })
     .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Quick calculator", exact: true })
     .click();
   const before = await page.locator(".projection-value").textContent();
   await page.getByLabel("Future classes to attend").fill("10");
@@ -135,7 +138,7 @@ test("mobile layout has no overflow and switches pages immediately", async ({
   for (const label of [
     "Subjects",
     "Calendar",
-    "Planner",
+    "Playground",
     "Settings",
     "Overview",
   ]) {
@@ -143,6 +146,13 @@ test("mobile layout has no overflow and switches pages immediately", async ({
       .getByRole("navigation", { name: "Mobile navigation" })
       .getByRole("button", { name: label, exact: true })
       .click();
+    if (label === "Settings") {
+      await expect(
+        page.getByRole("dialog", { name: "Settings", exact: true }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Close settings" }).click();
+      continue;
+    }
     await expect(
       page
         .getByRole("navigation", { name: "Mobile navigation" })
@@ -193,11 +203,11 @@ test("navigation remains available while a live refresh is pending", async ({
     page.getByRole("button", { name: "Refreshing…" }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Planner", exact: true })
+    .getByRole("button", { name: "Playground", exact: true })
     .first()
     .click();
   await expect(
-    page.getByRole("heading", { name: "Make room for your plans." }),
+    page.getByRole("heading", { name: "Your attendance playground." }),
   ).toBeVisible();
   await expect.poll(() => !!release).toBe(true);
   release?.();
@@ -252,7 +262,7 @@ test("small phone and tablet layouts keep controls within the viewport", async (
         : page.locator(".sidebar-bottom");
     await nav.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Make it yours." }),
+      page.getByRole("heading", { name: "Settings", exact: true }),
     ).toBeVisible();
   }
 });

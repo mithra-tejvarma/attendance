@@ -1,3 +1,8 @@
+import { forgetPushToken } from "./push";
+import { CornerControls, CornerSettings } from "./CornerControls";
+import { Playground, initialPlanEnd } from "./Playground";
+import type { PlanChoices } from "./playgroundModel";
+import { revealTheme } from "./themeTransition";
 import { useGlassLight } from "./useGlassLight";
 import { CAMPUS_ZONE, campusDateKey } from "./schedule";
 import React, { useEffect, useRef, useState } from "react";
@@ -19,7 +24,7 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { monthKey, readTheme, type Dashboard, type Bundle } from "./data";
-import { login, logout, post, type Credentials } from "./api";
+import { login, logout, post, get, type Credentials } from "./api";
 
 import {
   HelpDialog,
@@ -31,16 +36,15 @@ import {
   Today,
   Calendar,
   DayDetails,
-  Planner,
   Settings,
   type InstallEvent,
 } from "./components";
-type Page = "overview" | "subjects" | "calendar" | "planner" | "settings";
+type Page = "overview" | "subjects" | "calendar" | "playground";
 const pages: { id: Page; label: string; icon: typeof Sun }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "subjects", label: "Subjects", icon: BookOpen },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
-  { id: "planner", label: "Planner", icon: SlidersHorizontal },
+  { id: "playground", label: "Playground", icon: SlidersHorizontal },
 ];
 const pct = (value: unknown) =>
   Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -80,6 +84,9 @@ export default function App() {
     [monthLoading, setMonthLoading] = useState<Record<string, boolean>>({}),
     [monthErrors, setMonthErrors] = useState<Record<string, string>>({});
   const [monthRetry, setMonthRetry] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false),
+    [planChoices, setPlanChoices] = useState<PlanChoices>({}),
+    [planEnd, setPlanEnd] = useState(initialPlanEnd);
   const [selected, setSelected] = useState<string | null>(null),
     [help, setHelp] = useState(false);
   const monthRequests = useRef(new Set<string>()),
@@ -148,14 +155,51 @@ export default function App() {
   }, [notice]);
   function apply(next: Dashboard) {
     setData(next);
-    setBundles(next.dailyBundle || {});
+    const changed =
+      !data ||
+      data.dynamicContext?.classroomId !== next.dynamicContext?.classroomId ||
+      data.dynamicContext?.semNo !== next.dynamicContext?.semNo;
+    setBundles((prev) =>
+      changed || next.monthDetailsComplete !== false
+        ? next.dailyBundle || {}
+        : { ...prev, ...next.dailyBundle },
+    );
     const context = next.dynamicContext;
     const current = context
       ? `${context.currentYear}-${String(context.currentMonth).padStart(2, "0")}`
       : monthKey(new Date());
-    setMonths({ [current]: next.monthlyCalendar || {} });
-    setUpdated(new Date());
+    setMonths((prev) => {
+      const result = changed ? {} : { ...prev };
+      if (next.monthDetailsComplete !== false)
+        result[current] = next.monthlyCalendar || {};
+      else delete result[current];
+      return result;
+    });
+    setUpdated(new Date(next.fetchedAt || Date.now()));
   }
+  useEffect(() => {
+    if (!data || !("serviceWorker" in navigator)) return;
+    const onNotification = async (event: MessageEvent) => {
+      if (event.data?.type !== "ATTENDANCE_NOTIFICATION_OPEN") return;
+      const active = generation.current;
+      try {
+        const snapshot = await get<{ data: Dashboard }>("/api/me/dashboard");
+        if (active !== generation.current) return;
+        apply(snapshot.data);
+        setPage("overview");
+        setSettingsOpen(false);
+        setNotice(
+          "Showing your saved attendance. Check the refresh time below.",
+        );
+      } catch {
+        if (active === generation.current)
+          setNotice("Reconnect or refresh to see your latest attendance.");
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onNotification);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", onNotification);
+  }, [data]);
   async function authenticate(input: Credentials) {
     if (loginLock.current) return;
     loginLock.current = true;
@@ -185,8 +229,12 @@ export default function App() {
   }
   function signOut() {
     logout();
+    forgetPushToken();
     generation.current++;
     setCredentials(null);
+    setSettingsOpen(false);
+    setPlanChoices({});
+    setPlanEnd(initialPlanEnd());
     setData(null);
     setBundles({});
     setMonths({});
@@ -208,7 +256,11 @@ export default function App() {
       const next = await login(credentials);
       if (token === generation.current) {
         apply(next);
-        setNotice("Your attendance is up to date.");
+        setNotice(
+          next.source === "cache"
+            ? "Showing your recent saved attendance. Check the refresh time below."
+            : "Your attendance is up to date.",
+        );
       }
     } catch (e) {
       if (token === generation.current) setError((e as Error).message);
@@ -243,7 +295,7 @@ export default function App() {
   useEffect(() => {
     if (
       !data ||
-      page !== "calendar" ||
+      (page !== "calendar" && page !== "playground") ||
       months[calendarKey] ||
       !credentials ||
       monthRequests.current.has(calendarKey)
@@ -290,7 +342,10 @@ export default function App() {
   const stats = data?.primary?.primaryAttendance;
   const today = campusDateKey(clock),
     todayBundle = bundles[today];
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const changeTheme = (next: string, origin?: HTMLElement) =>
+    revealTheme(next, setTheme, origin);
+  const toggleTheme = (origin?: HTMLElement) =>
+    changeTheme(theme === "dark" ? "light" : "dark", origin);
   const moveMonth = (offset: number) => {
     setCalendarDate(
       (prev) => new Date(prev.getFullYear(), prev.getMonth() + offset, 1),
@@ -303,14 +358,12 @@ export default function App() {
     setSelected(date);
     if (matchMedia("(max-width: 1100px)").matches)
       requestAnimationFrame(() =>
-        document
-          .querySelector(".student-day-detail")
-          ?.scrollIntoView({
-            behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-              ? "instant"
-              : "smooth",
-            block: "start",
-          }),
+        document.querySelector(".student-day-detail")?.scrollIntoView({
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "instant"
+            : "smooth",
+          block: "start",
+        }),
       );
   }
   const calendar = (
@@ -328,14 +381,13 @@ export default function App() {
   );
   return (
     <>
+      <CornerControls
+        theme={theme}
+        toggle={toggleTheme}
+        settings={data ? () => setSettingsOpen(true) : undefined}
+      />
       {!data ? (
-        <Login
-          busy={busy}
-          error={error}
-          login={authenticate}
-          theme={theme}
-          toggleTheme={toggleTheme}
-        />
+        <Login busy={busy} error={error} login={authenticate} />
       ) : (
         <div className="app-shell">
           <aside className="sidebar">
@@ -369,19 +421,11 @@ export default function App() {
                 <p>Built for a little more clarity in your college day.</p>
               </div>
               <button
-                className={`nav-item ${page === "settings" ? "active" : ""}`}
-                onClick={() => setPage("settings")}
+                className={`nav-item ${settingsOpen ? "active" : ""}`}
+                onClick={() => setSettingsOpen(true)}
               >
                 <Settings2 size={19} />
                 Settings
-              </button>
-              <button
-                className="nav-item"
-                onClick={toggleTheme}
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-              >
-                {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
-                <span>Switch theme</span>
               </button>
               <button className="nav-item" onClick={() => setHelp(true)}>
                 <CircleHelp size={19} />
@@ -448,8 +492,8 @@ export default function App() {
                       "Every subject, in focus."
                     ) : page === "calendar" ? (
                       "Your month, at a glance."
-                    ) : page === "planner" ? (
-                      "Make room for your plans."
+                    ) : page === "playground" ? (
+                      "Your attendance playground."
                     ) : (
                       "Make it yours."
                     )}
@@ -461,8 +505,8 @@ export default function App() {
                         ? "Know your numbers. Find your balance."
                         : page === "calendar"
                           ? "Explore recorded attendance, one day at a time."
-                          : page === "planner"
-                            ? "Explore what-if scenarios without changing your records."
+                          : page === "playground"
+                            ? "Plan future days and classes without changing your official records."
                             : "Your account, appearance, and app preferences."}
                   </p>
                 </div>
@@ -587,27 +631,44 @@ export default function App() {
                   />
                 </div>
               )}
-              {page === "planner" && <Planner subjects={subjects} />}
-              {page === "settings" && (
-                <Settings
-                  theme={theme}
-                  setTheme={setTheme}
-                  student={student}
-                  loginId={credentials?.loginId}
-                  classroom={data.primary?.classroom?.name}
-                  semester={data.dynamicContext?.semNo}
-                  install={install}
-                  doInstall={async () => {
-                    if (install) {
-                      await install.prompt();
-                      setInstall(null);
-                    } else
-                      setNotice(
-                        "Use your browser menu → Install app or Add to Home Screen, if supported.",
-                      );
-                  }}
-                  signOut={signOut}
+              {page === "playground" && (
+                <Playground
+                  data={data}
+                  bundles={bundles}
+                  date={calendarDate}
+                  move={moveMonth}
+                  ready={!!months[calendarKey]}
+                  loading={monthBusy}
+                  error={monthError}
+                  retry={() => setMonthRetry((v) => v + 1)}
+                  choices={planChoices}
+                  setChoices={setPlanChoices}
+                  end={planEnd}
+                  setEnd={setPlanEnd}
                 />
+              )}
+              {settingsOpen && (
+                <CornerSettings close={() => setSettingsOpen(false)}>
+                  <Settings
+                    theme={theme}
+                    setTheme={changeTheme}
+                    student={student}
+                    loginId={credentials?.loginId}
+                    classroom={data.primary?.classroom?.name}
+                    semester={data.dynamicContext?.semNo}
+                    install={install}
+                    doInstall={async () => {
+                      if (install) {
+                        await install.prompt();
+                        setInstall(null);
+                      } else
+                        setNotice(
+                          "Use your browser menu → Install app or Add to Home Screen, if supported.",
+                        );
+                    }}
+                    signOut={signOut}
+                  />
+                </CornerSettings>
               )}
               <footer className="page-footer">
                 <span>
@@ -626,10 +687,7 @@ export default function App() {
             </main>
           </div>
           <nav className="mobile-nav" aria-label="Mobile navigation">
-            {[
-              ...pages,
-              { id: "settings" as Page, label: "Settings", icon: Settings2 },
-            ].map(({ id, label, icon: Icon }) => (
+            {pages.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 className={page === id ? "active" : ""}
@@ -643,6 +701,14 @@ export default function App() {
                 <span>{label}</span>
               </button>
             ))}
+            <button
+              className={settingsOpen ? "active" : ""}
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings2 size={20} />
+              <span>Settings</span>
+            </button>
           </nav>
         </div>
       )}

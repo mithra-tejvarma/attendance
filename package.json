@@ -11,6 +11,8 @@
     "format": "prettier --write src tests *.ts *.json index.html public/*.js public/*.webmanifest"
   },
   "dependencies": {
+    "@firebase/app": "0.16.4",
+    "@firebase/messaging": "0.13.3",
     "lucide-react": "1.61.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"

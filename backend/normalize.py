@@ -162,6 +162,10 @@ def slot_data(raw):
             for key in ("name", "subjectName", "subjectCode")
             if isinstance(subject.get(key), str)
         }
+        if isinstance(subject.get("subjectType"), dict) and isinstance(
+            subject["subjectType"].get("hasAttendance"), bool
+        ):
+            result["attendanceRequired"] = subject["subjectType"]["hasAttendance"]
         if subject.get("id") is not None:
             result["subject"]["id"] = identifier(subject["id"])
     if isinstance(raw.get("faculties"), list):

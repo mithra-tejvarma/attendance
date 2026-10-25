@@ -82,3 +82,47 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// FCM data messages are handled by this worker, without importing a second cache worker.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    return;
+  }
+  const data = payload.data || payload.notification || {};
+  const title =
+    typeof data.title === "string" ? data.title : "Attendance updated";
+  const body =
+    typeof data.body === "string"
+      ? data.body
+      : "Open Attendance to see your latest records.";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: data.eventId || "attendance-update",
+      renotify: false,
+      data: { url: "/" },
+    }),
+  );
+});
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async (clients) => {
+        const existing = clients.find(
+          (client) => new URL(client.url).origin === self.location.origin,
+        );
+        if (existing) {
+          existing.postMessage({ type: "ATTENDANCE_NOTIFICATION_OPEN" });
+          return existing.focus();
+        }
+        return self.clients.openWindow("/");
+      }),
+  );
+});

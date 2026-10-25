@@ -14,6 +14,8 @@ Login currently succeeds through CampX cookies. The response also includes a nes
 
 The provided development credentials and service key are stored in a private mode-0600 runtime file outside the checkout at `/workspace/.attendance-secrets/attendance.env`. A persistent Fernet key was generated there without printing it. This is a local shared-workspace configuration, not a write to the platform secret vault or Render settings. Do not copy its contents into GitHub, a frontend build, or setup scripts. After reviewing this file's use, authorized workspace tasks can source it without displaying values. Individual students must still supply their own CampX login; this account is never a default for other users.
 
+For the latest compact cache, notification endpoints, required migration and scale assessment, read [rollout and activation](rollout.md).
+
 ## Local development
 
 Use Python 3.12, Node 24, and the existing checkout.
@@ -69,16 +71,7 @@ Snapshots preserve the verified per-timetable attendance links while avoiding in
 
 A successful session refresh persists rotated upstream cookies/tokens. Upstream expiry/rejection requires reconnection; passwords are not retained for automatic reauthentication. App sessions default to two hours and do not slide indefinitely. Upstream logout/revocation support has not been established; app logout revokes only the app token.
 
-Plan retention before inviting users. An administrator should remove expired app sessions/leases and old month/day snapshots, for example:
-
-```sql
-delete from public.app_sessions where expires_at < now();
-delete from public.student_refresh_leases where expires_at < now();
-delete from public.attendance_snapshots
-where kind <> 'dashboard' and fetched_at < now() - interval '30 days';
-```
-
-No cleanup schedule, account deletion UI, normalized permanent attendance history, or notification outbox has been deployed. Establish user consent, retention, deletion and recovery procedures before wider rollout. Production backups and guaranteed uptime are not provided by this code or free plans.
+The second migration adds bounded retention cleanup: expired app sessions/leases, day snapshots older than 7 days, month snapshots older than 60 days, completed delivery records older than 7 days and all delivery records older than 30 days. Apply it and configure the authenticated daily maintenance job described in [rollout and activation](rollout.md). The migration and scheduler have not been activated remotely yet. Student profiles/latest dashboards and Firestore metrics need an explicit deletion/retention policy; an account deletion UI and guaranteed backups/uptime are not provided.
 
 ## Firebase usage, project attendance-90c12
 
@@ -88,7 +81,7 @@ The backend writes daily aggregates to `usage_users/{pseudonymousStudentUuid}/da
 
 A bounded async queue keeps analytics off the attendance response path. Events can be dropped on queue overflow, write failure or process shutdown. Metrics are best-effort, **not billing-grade exact counts**. There is no analytics dashboard or scheduled aggregation job yet.
 
-`firestore.rules` is a **template** denying browser access to usage records. Merge it with any existing rules; do not overwrite unrelated project policies blindly. The trusted service identity bypasses these client rules. Firebase rules and credentials have not been deployed or tested remotely. Required HTTPS destinations are `firestore.googleapis.com` and `oauth2.googleapis.com`; the Supabase project host is also required when enabling that adapter. Preserve existing network policy when adding destinations.
+`firestore.rules` is a **template** denying browser access to usage records. Merge it with any existing rules; do not overwrite unrelated project policies blindly. The trusted service identity bypasses these client rules. The uploaded server credential authenticates, but Firestore returns SERVICE_DISABLED and usage remains off. Browser rules and real usage writes have not been deployed/verified remotely. A global Supabase reservation budget limits this app to 16,000 Firestore writes per Pacific quota day; apply the second migration before enabling usage. Required HTTPS destinations are `firestore.googleapis.com` and `oauth2.googleapis.com`; the Supabase project host is also required when enabling that adapter. Preserve existing network policy when adding destinations.
 
 ## Endpoints and operational limits
 
@@ -101,8 +94,8 @@ A bounded async queue keeps analytics off the attendance response path. Events c
 
 The frontend keeps the bearer token only in memory and strips login/password from session requests. Settings retains the login identifier for display. Error responses and validation errors do not echo submitted credentials. API responses have `Cache-Control: no-store`. Tokens are never accepted in URLs. Cross-site cookies are unnecessary for this version; HTTP-only same-site cookies remain a future option. An XSS could still steal an in-memory token, so production CSP and dependency/security review remain necessary.
 
-Initial login uses six CampX requests; subsequent full refreshes use five, and session month fetches use three. Required independent requests run concurrently after context is established. Defaults: 16 upstream requests and 8 admitted operations per process, 12-second HTTP timeout (5-second connect), 50-second overall operation budget. Capacity is rejected quickly with 503 instead of building an unbounded queue. No automatic retry storm, keep-alive circumvention or upstream TLS bypass is used.
+On cache misses, initial login uses six CampX requests; subsequent full refreshes use five, and session month fetches use three. Fresh private cache hits avoid those data fetches; login still verifies credentials and identity. Required independent requests run concurrently after context is established. Defaults: 16 upstream requests and 8 admitted operations per process, 12-second HTTP timeout (5-second connect), 50-second overall operation budget. Capacity is rejected quickly with 503 instead of building an unbounded queue. No automatic retry storm, keep-alive circumvention or upstream TLS bypass is used.
 
 Per-account/per-client/per-student rate limits are process-local. Shared refresh leases coordinate two servers, but rate budgets do not. Before horizontal rollout, evaluate a shared rate limiter and configure trusted proxy addresses correctly; never trust arbitrary `X-Forwarded-For` headers. One Uvicorn worker is recommended on a small Render free instance. These bounds are safety defaults, not proven CampX limits or capacity guarantees. Do not promise a student count or latency before an authorized load pilot.
 
-No CampX webhook, unattended poller, FCM push sender or notification delivery is implemented in this change. Those need verified response identities, consent, and a durable job/outbox design.
+Opt-in scheduled checks and FCM delivery now use encrypted session-bound subscriptions, atomic Supabase claims and a durable outbox. Activation is still pending. See [rollout and activation](rollout.md) for the new migration, separate scheduler endpoints, current free-tier limits and live verification status. No CampX webhook has been established.

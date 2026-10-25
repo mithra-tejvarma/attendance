@@ -21,3 +21,7 @@ services:
         value: "false"
       - key: FIREBASE_PROJECT_ID
         value: attendance-90c12
+      - key: CACHE_TTL_SECONDS
+        value: "60"
+      - key: NOTIFICATIONS_ENABLED
+        value: "false"

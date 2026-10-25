@@ -13,8 +13,9 @@ logger = logging.getLogger("attendance.usage")
 
 
 class Usage:
-    def __init__(self, settings):
+    def __init__(self, settings, store=None):
         self.enabled = settings.firebase_usage
+        self.store = store
         self.project = settings.firebase_project
         self.queue = asyncio.Queue(maxsize=128)
         self.worker = None
@@ -70,6 +71,18 @@ class Usage:
 
     async def write(self, event):
         uid, operation, calls, success, day = event
+        if self.store and hasattr(self.store, "request"):
+            reserved = await self.store.request(
+                "POST",
+                "rpc/reserve_firebase_usage_writes",
+                json={
+                    "p_cost": 2 if operation == "login" and success else 1,
+                    "p_limit": 16000,
+                },
+                headers={"Prefer": "return=representation"},
+            )
+            if reserved is not True:
+                return
         if not self.credentials.valid:
             from google.auth.transport.requests import Request
 

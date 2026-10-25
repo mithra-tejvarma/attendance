@@ -140,7 +140,9 @@ def test_login_returns_minimal_data_and_saves_no_passwords(setup):
     assert data["primary"]["student"]["email"] == "fixture@example.test"
     assert data["subjectWise"]["subjects"][0]["percentage"] == 80
     assert "PRIVATE" not in json.dumps(data)
-    snapshot = next(iter(store.snapshots.values()))
+    snapshot = next(
+        value for (uid, kind), value in store.snapshots.items() if kind == "dashboard"
+    )
     assert "sessionToken" not in snapshot["data"]
     assert "password" not in json.dumps(store.sessions)
     assert "  valid password  " not in json.dumps(store.sessions)

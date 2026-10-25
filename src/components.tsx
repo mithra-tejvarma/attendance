@@ -1,3 +1,4 @@
+import { NotificationSettings } from "./NotificationSettings";
 import {
   attendanceFor,
   matchingAttendance,
@@ -83,14 +84,10 @@ export function Login({
   busy,
   error,
   login: submit,
-  theme,
-  toggleTheme,
 }: {
   busy: boolean;
   error: string;
   login: (c: Credentials) => void;
-  theme: string;
-  toggleTheme: () => void;
 }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -99,13 +96,6 @@ export function Login({
     <div className="login-page simple-login">
       <header>
         <Brand />
-        <button
-          className="icon-button"
-          aria-label="Toggle theme"
-          onClick={toggleTheme}
-        >
-          {theme === "dark" ? <Sun /> : <Moon />}
-        </button>
       </header>
       <main className="login-layout">
         <section className="glass login-card">
@@ -818,7 +808,7 @@ export function Settings({
   signOut,
 }: {
   theme: string;
-  setTheme: (s: string) => void;
+  setTheme: (s: string, origin?: HTMLElement) => void;
   student?: Student;
   loginId?: string;
   classroom?: string;
@@ -841,7 +831,7 @@ export function Settings({
               aria-pressed={theme === id}
               className={theme === id ? "selected" : ""}
               key={id}
-              onClick={() => setTheme(id)}
+              onClick={(event) => setTheme(id, event.currentTarget)}
             >
               <Icon size={23} />
               <span>{label}</span>
@@ -910,18 +900,7 @@ export function Settings({
         </button>
       </section>
       <section className="glass settings-card">
-        <SectionTitle
-          kicker="COMING IN A LATER RELEASE"
-          title="Attendance notifications"
-        />
-        <p>
-          Push delivery and background synchronization are not connected yet.
-          We’ll only request browser permission when the full service is ready.
-        </p>
-        <span className="label-chip">
-          <Bell size={14} />
-          Not available yet
-        </span>
+        <NotificationSettings />
       </section>
     </div>
   );

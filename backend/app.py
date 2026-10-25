@@ -14,10 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
+from .cache import compact_dashboard, fresh
 from .campx import CALENDAR, CLASSES, PRIMARY, SUBJECTS, TIMETABLE, Campx
 from .config import Settings
 from .errors import ServiceError, schema_error
 from .normalize import calendar_data, context, daily_bundle, primary_data, subject_data
+from .notifications import Notifications
 from .store import MemoryStore, SupabaseStore
 from .usage import Usage
 
@@ -207,6 +209,46 @@ class Service:
             "schemaVersion": 1,
         }
 
+    async def persist_dashboard(self, uid, data):
+        ctx = data["dynamicContext"]
+        month = {
+            key: data[key]
+            for key in (
+                "dailyBundle",
+                "monthlyCalendar",
+                "dynamicContext",
+                "fetchedAt",
+                "schemaVersion",
+            )
+        }
+        await self.store.save_snapshot(
+            uid, f"month:{ctx['currentYear']}-{ctx['currentMonth']:02d}", month
+        )
+        compact = compact_dashboard(data)
+        await self.store.save_snapshot(uid, "dashboard", compact)
+        return compact
+
+    async def cached_dashboard(self, request, ctx):
+        snapshot = await self.store.get_snapshot(ctx["studentId"], "dashboard")
+        if not fresh(snapshot, ctx, self.settings.cache_seconds):
+            return None
+        data = {**snapshot["data"], "source": "cache"}
+        if "application/vnd.varmalabs.compact+json" in request.headers.get(
+            "accept", ""
+        ):
+            return data
+        now = datetime.now(CAMPUS)
+        month = await self.store.get_snapshot(
+            ctx["studentId"], f"month:{now.year}-{now.month:02d}"
+        )
+        if not fresh(month, ctx, self.settings.cache_seconds):
+            return None
+        return {
+            **data,
+            "dailyBundle": month["data"]["dailyBundle"],
+            "monthDetailsComplete": True,
+        }
+
     async def login(self, request, credentials):
         self.login_limit(request, credentials)
         now = datetime.now(CAMPUS)
@@ -220,9 +262,19 @@ class Service:
                 ctx = context(primary)
                 uid = ctx["studentId"]
                 async with self.student_lease(uid):
-                    data = await self.dashboard(
-                        client, primary, ctx, now.year, now.month
+                    data = (
+                        await self.cached_dashboard(request, ctx)
+                        if self.settings.cache_seconds
+                        else None
                     )
+                    if data is not None and data.get("primary") != primary_data(
+                        primary
+                    ):
+                        data = None
+                    if data is None:
+                        data = await self.dashboard(
+                            client, primary, ctx, now.year, now.month
+                        )
                     token = secrets.token_urlsafe(32)
                     session = {
                         "token_hash": hashlib.sha256(token.encode()).hexdigest(),
@@ -236,10 +288,19 @@ class Service:
                     }
                     await self.store.save_student(uid, data["primary"]["student"])
                     await self.store.put_session(session)
-                    await self.store.save_snapshot(uid, "dashboard", data)
+                    if data.get("source") == "cache":
+                        returned = data
+                    else:
+                        compact = await self.persist_dashboard(uid, data)
+                        returned = (
+                            compact
+                            if "application/vnd.varmalabs.compact+json"
+                            in request.headers.get("accept", "")
+                            else data
+                        )
                 success = True
                 return {
-                    **data,
+                    **returned,
                     "sessionToken": token,
                     "sessionExpiresAt": session["expires_at"],
                 }
@@ -284,6 +345,24 @@ class Service:
                                     "student_context",
                                     "The requested classroom or semester does not match your CampX account.",
                                 )
+                    if session and self.settings.cache_seconds:
+                        if operation == "refresh":
+                            cached = await self.cached_dashboard(request, ctx)
+                        else:
+                            kind = (
+                                f"today:{body.date.isoformat()}"
+                                if operation == "today"
+                                else f"month:{body.year}-{body.month:02d}"
+                            )
+                            snapshot = await self.store.get_snapshot(uid, kind)
+                            cached = (
+                                {**snapshot["data"], "source": "cache"}
+                                if fresh(snapshot, ctx, self.settings.cache_seconds)
+                                else None
+                            )
+                        if cached is not None:
+                            success = True
+                            return cached
                     async with self.student_lease(uid):
                         if operation == "refresh":
                             primary = await client.get(PRIMARY)
@@ -382,6 +461,12 @@ class Service:
                                 ),
                                 "fetchedAt": datetime.now(UTC).isoformat(),
                                 "schemaVersion": 1,
+                                "dynamicContext": {
+                                    "classroomId": ctx["classroomId"],
+                                    "semNo": ctx["semNo"],
+                                    "currentMonth": body.month,
+                                    "currentYear": body.year,
+                                },
                             }
                             if operation == "today":
                                 data.update(
@@ -403,7 +488,15 @@ class Service:
                             await self.store.save_student(
                                 uid, primary_data(primary)["student"]
                             )
-                        await self.store.save_snapshot(uid, kind, data)
+                        if kind == "dashboard":
+                            compact = await self.persist_dashboard(uid, data)
+                            if (
+                                "application/vnd.varmalabs.compact+json"
+                                in request.headers.get("accept", "")
+                            ):
+                                data = compact
+                        else:
+                            await self.store.save_snapshot(uid, kind, data)
                     success = True
                     return data
                 except ServiceError as error:
@@ -425,8 +518,9 @@ def create_app(settings=None, store=None, transport=None, usage=None):
             if settings.supabase_url
             else MemoryStore(settings.max_sessions)
         )
-        active_usage = usage or Usage(settings)
+        active_usage = usage or Usage(settings, active_store)
         app.state.service = Service(settings, active_store, active_usage, transport)
+        app.state.notifications = Notifications(app.state.service)
         await active_usage.start()
         if not settings.supabase_url and store is None:
             logger.warning(
@@ -435,6 +529,7 @@ def create_app(settings=None, store=None, transport=None, usage=None):
         try:
             yield
         finally:
+            await app.state.notifications.close()
             await active_usage.close()
             await active_store.close()
 
@@ -527,6 +622,92 @@ def create_app(settings=None, store=None, transport=None, usage=None):
                 )
             service.usage.emit(session["student_id"], "dashboard", 0, True)
             return {**snapshot, "source": "saved"}
+
+    class PushToken(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        token: SecretStr = Field(min_length=20, max_length=4096)
+
+    @app.get("/api/notifications/config")
+    async def push_config(request: Request):
+        service = request.app.state.service
+        service.rates.check(
+            "push-config:" + (request.client.host if request.client else "unknown"), 60
+        )
+        async with service.admitted():
+            return await request.app.state.notifications.configured()
+
+    @app.post("/api/notifications/subscribe")
+    async def push_subscribe(request: Request, body: PushToken):
+        service = request.app.state.service
+        async with service.admitted():
+            session = await service.session(request)
+            service.rates.check("push:" + session["student_id"], 10)
+            return await request.app.state.notifications.subscribe(
+                session, body.token.get_secret_value()
+            )
+
+    @app.post("/api/notifications/unsubscribe", status_code=204)
+    async def push_unsubscribe(request: Request, body: PushToken):
+        service = request.app.state.service
+        async with service.admitted():
+            session = await service.session(request)
+            await request.app.state.notifications.unsubscribe(
+                session, body.token.get_secret_value()
+            )
+        return Response(status_code=204)
+
+    @app.post("/api/notifications/test")
+    async def push_test(request: Request, body: PushToken):
+        service = request.app.state.service
+        async with service.admitted():
+            session = await service.session(request)
+            service.rates.check("push-test:" + session["student_id"], 3)
+            return await request.app.state.notifications.test(
+                session, body.token.get_secret_value()
+            )
+
+    @app.post("/internal/notifications/run")
+    async def run_notifications(request: Request):
+        worker = request.app.state.notifications
+        worker.authorize_cron(request)
+        request.app.state.service.rates.check("cron", 20)
+        try:
+            async with asyncio.timeout(25):
+                return await worker.run()
+        except TimeoutError:
+            raise ServiceError(
+                504,
+                "worker_timeout",
+                "Worker time budget reached; unfinished claims will retry.",
+            ) from None
+
+    @app.post("/internal/notifications/deliver")
+    async def deliver_notifications(request: Request):
+        worker = request.app.state.notifications
+        worker.authorize_cron(request)
+        request.app.state.service.rates.check("cron-deliver", 20)
+        try:
+            async with asyncio.timeout(25):
+                return await worker.run_deliveries()
+        except TimeoutError:
+            raise ServiceError(
+                504,
+                "worker_timeout",
+                "Worker time budget reached; unfinished deliveries will retry.",
+            ) from None
+
+    @app.post("/internal/maintenance")
+    async def maintenance(request: Request):
+        worker = request.app.state.notifications
+        worker.authorize_cron(request, notifications=False)
+        request.app.state.service.rates.check("maintenance", 2)
+        return {
+            "deleted": await worker.store.request(
+                "POST",
+                "rpc/cleanup_attendance_data",
+                headers={"Prefer": "return=representation"},
+            )
+        }
 
     @app.post("/api/logout", status_code=204)
     async def logout(request: Request):

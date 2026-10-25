@@ -1,5 +1,6 @@
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 # Existing public web-client identifier; override when CampX rotates its browser client.
@@ -18,12 +19,19 @@ class Settings:
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     )
+    cache_seconds: int = 0
     session_seconds: int = 7200
     max_requests: int = 16
     max_operations: int = 8
     max_sessions: int = 1000
     firebase_usage: bool = False
     firebase_project: str = "attendance-90c12"
+    firebase_web: dict = field(default_factory=dict)
+    vapid_public: str = ""
+    notifications_enabled: bool = False
+    cron_secret: str = ""
+    notification_batch_size: int = 2
+    notification_interval_seconds: int = 900
 
     @classmethod
     def from_env(cls):
@@ -40,6 +48,7 @@ class Settings:
                 for v in os.getenv("ALLOWED_ORIGINS", ",".join(defaults)).split(",")
                 if v.strip()
             ),
+            cache_seconds=int(os.getenv("CACHE_TTL_SECONDS", "60")),
             session_seconds=int(os.getenv("SESSION_TTL_SECONDS", "7200")),
             max_requests=int(os.getenv("CAMPX_MAX_CONCURRENCY", "16")),
             max_operations=int(os.getenv("MAX_ACTIVE_OPERATIONS", "8")),
@@ -47,14 +56,33 @@ class Settings:
             firebase_usage=os.getenv("FIREBASE_USAGE_ENABLED", "false").lower()
             == "true",
             firebase_project=os.getenv("FIREBASE_PROJECT_ID", "attendance-90c12"),
+            firebase_web=json.loads(os.getenv("FIREBASE_WEB_CONFIG", "{}")),
+            vapid_public=os.getenv("FCM_VAPID_PUBLIC_KEY", ""),
+            notifications_enabled=os.getenv("NOTIFICATIONS_ENABLED", "false").lower()
+            == "true",
+            cron_secret=os.getenv("CRON_SECRET", ""),
+            notification_batch_size=int(os.getenv("NOTIFICATION_BATCH_SIZE", "2")),
+            notification_interval_seconds=int(
+                os.getenv("NOTIFICATION_INTERVAL_SECONDS", "900")
+            ),
         )
         if not (
-            60 <= result.session_seconds <= 86400
+            0 <= result.cache_seconds <= 300
+            and 60 <= result.session_seconds <= 86400
             and 1 <= result.max_requests <= 64
             and 1 <= result.max_operations <= 64
             and result.max_sessions > 0
         ):
             raise ValueError("Invalid concurrency or session settings")
+        if not (
+            1 <= result.notification_batch_size <= 12
+            and 900 <= result.notification_interval_seconds <= 86400
+        ):
+            raise ValueError("Invalid notification batch or interval")
+        if result.notifications_enabled and (
+            not result.supabase_url or len(result.cron_secret) < 32
+        ):
+            raise ValueError("Notifications require Supabase and a strong CRON_SECRET")
         for origin in result.origins:
             url = urlsplit(origin)
             if (

@@ -1,4 +1,5 @@
 export type Subject = {
+  subjectId?: string | number;
   subjectName: string;
   present: number;
   numberOfClasses: number;
@@ -33,6 +34,9 @@ export type Student = {
   semNo?: string | number;
 };
 export type Dashboard = {
+  fetchedAt?: string;
+  monthDetailsComplete?: boolean;
+  source?: string;
   primary?: {
     student?: Student;
     classroom?: { name?: string };

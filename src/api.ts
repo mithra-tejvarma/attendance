@@ -11,6 +11,7 @@ export async function post<T>(path: string, body: object): Promise<T> {
   const token = sessionToken;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Accept: "application/vnd.varmalabs.compact+json",
   };
   let payload = body;
   if (token && path !== "/api/attendance") {
@@ -82,4 +83,16 @@ export function logout() {
       headers: { Authorization: `Bearer ${token}` },
       keepalive: true,
     }).catch(() => {});
+}
+
+export async function get<T>(path: string): Promise<T> {
+  const response = await fetch(API_BASE + path, {
+    headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok)
+    throw new Error(
+      "This service is temporarily unavailable. Please try again.",
+    );
+  return response.json() as Promise<T>;
 }
