@@ -43,6 +43,10 @@ test("future projection preserves actual data and excludes past, cancelled, and 
         ...bundle.timetable,
         { id: "c", subjectId: "math", isSuspended: true },
         { id: "d", subjectId: "math", attendanceRequired: false },
+        {
+          id: "legacy-no-attendance",
+          subject: { id: "math", subjectType: { hasAttendance: false } },
+        },
       ],
     },
   };

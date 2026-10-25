@@ -1,3 +1,5 @@
+import { GuidedTour, tourSeen, markTourSeen } from "./GuidedTour";
+import { subjectHistory } from "./subjectHistory";
 import { forgetPushToken } from "./push";
 import { CornerControls, CornerSettings } from "./CornerControls";
 import { Playground, initialPlanEnd } from "./Playground";
@@ -87,11 +89,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false),
     [planChoices, setPlanChoices] = useState<PlanChoices>({}),
     [planEnd, setPlanEnd] = useState(initialPlanEnd);
+  const [tourOpen, setTourOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null),
     [help, setHelp] = useState(false);
-  const monthRequests = useRef(new Set<string>()),
+  const monthRequests = useRef(new Map<string, Promise<boolean>>()),
+    historyBootstrap = useRef(false),
     loginLock = useRef(false),
-    generation = useRef(0);
+    generation = useRef(0),
+    contextGeneration = useRef(0);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
@@ -159,6 +164,23 @@ export default function App() {
       !data ||
       data.dynamicContext?.classroomId !== next.dynamicContext?.classroomId ||
       data.dynamicContext?.semNo !== next.dynamicContext?.semNo;
+    if (changed) {
+      contextGeneration.current++;
+      monthRequests.current.clear();
+      historyBootstrap.current = false;
+      setMonthLoading({});
+      setMonthErrors({});
+      setPlanChoices({});
+      setSelected(null);
+      if (data && next.dynamicContext)
+        setCalendarDate(
+          new Date(
+            next.dynamicContext.currentYear,
+            next.dynamicContext.currentMonth - 1,
+            1,
+          ),
+        );
+    }
     setBundles((prev) =>
       changed || next.monthDetailsComplete !== false
         ? next.dailyBundle || {}
@@ -220,6 +242,7 @@ export default function App() {
       setCredentials(input);
       apply(next);
       setPage("overview");
+      setTourOpen(!tourSeen());
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -231,8 +254,12 @@ export default function App() {
     logout();
     forgetPushToken();
     generation.current++;
+    contextGeneration.current++;
+    setBusy(false);
     setCredentials(null);
     setSettingsOpen(false);
+    setTourOpen(false);
+    historyBootstrap.current = false;
     setPlanChoices({});
     setPlanEnd(initialPlanEnd());
     setData(null);
@@ -265,7 +292,7 @@ export default function App() {
     } catch (e) {
       if (token === generation.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (token === generation.current) setBusy(false);
     }
   }
   const calendarKey = monthKey(calendarDate);
@@ -292,48 +319,118 @@ export default function App() {
         : marked.at(-1) || `${calendarKey}-01`,
     );
   }, [page, calendarKey, months, selected, clock]);
-  useEffect(() => {
-    if (
-      !data ||
-      (page !== "calendar" && page !== "playground") ||
-      months[calendarKey] ||
-      !credentials ||
-      monthRequests.current.has(calendarKey)
-    )
-      return;
-    const token = generation.current;
-    monthRequests.current.add(calendarKey);
-    setMonthLoading((prev) => ({ ...prev, [calendarKey]: true }));
-    setMonthErrors((prev) => ({ ...prev, [calendarKey]: "" }));
-    post<{
+  async function loadMonth(target: Date): Promise<boolean> {
+    const key = monthKey(target);
+    if (months[key]) return true;
+    if (!data || !credentials) return false;
+    const running = monthRequests.current.get(key);
+    if (running) return running;
+    const active = generation.current,
+      scope = contextGeneration.current;
+    setMonthLoading((prev) => ({ ...prev, [key]: true }));
+    setMonthErrors((prev) => ({ ...prev, [key]: "" }));
+    const request = post<{
       monthlyCalendar: Record<string, string>;
       dailyBundle: Record<string, Bundle>;
     }>("/api/month-complete-data", {
       ...credentials,
-      month: calendarDate.getMonth() + 1,
-      year: calendarDate.getFullYear(),
+      month: target.getMonth() + 1,
+      year: target.getFullYear(),
       classroomId: data.dynamicContext?.classroomId,
       semNo: data.dynamicContext?.semNo,
     })
       .then((next) => {
-        if (token === generation.current) {
-          setMonths((prev) => ({
-            ...prev,
-            [calendarKey]: next.monthlyCalendar || {},
-          }));
-          setBundles((prev) => ({ ...prev, ...next.dailyBundle }));
-        }
+        if (
+          active !== generation.current ||
+          scope !== contextGeneration.current
+        )
+          return false;
+        setMonths((prev) => ({ ...prev, [key]: next.monthlyCalendar || {} }));
+        setBundles((prev) => ({ ...prev, ...next.dailyBundle }));
+        return true;
       })
       .catch((e) => {
-        if (token === generation.current)
-          setMonthErrors((prev) => ({ ...prev, [calendarKey]: e.message }));
+        if (
+          active === generation.current &&
+          scope === contextGeneration.current
+        )
+          setMonthErrors((prev) => ({ ...prev, [key]: e.message }));
+        return false;
       })
       .finally(() => {
-        monthRequests.current.delete(calendarKey);
-        if (token === generation.current)
-          setMonthLoading((prev) => ({ ...prev, [calendarKey]: false }));
+        if (monthRequests.current.get(key) === request)
+          monthRequests.current.delete(key);
+        if (
+          active === generation.current &&
+          scope === contextGeneration.current
+        )
+          setMonthLoading((prev) => ({ ...prev, [key]: false }));
       });
-  }, [calendarKey, page, data, credentials, months, calendarDate, monthRetry]);
+    monthRequests.current.set(key, request);
+    return request;
+  }
+  const currentHistoryKey = campusDateKey(clock).slice(0, 7);
+  const currentHistoryMonth = new Date(currentHistoryKey + "-01T12:00:00");
+  let historyStart = new Date(currentHistoryMonth);
+  for (let i = 0; i < 1200 && months[currentHistoryKey]; i++) {
+    const previous = new Date(
+      historyStart.getFullYear(),
+      historyStart.getMonth() - 1,
+      1,
+    );
+    if (!months[monthKey(previous)]) break;
+    historyStart = previous;
+  }
+  const historyStartKey = monthKey(historyStart),
+    olderMonth = new Date(
+      historyStart.getFullYear(),
+      historyStart.getMonth() - 1,
+      1,
+    ),
+    olderKey = monthKey(olderMonth),
+    historyBundles = Object.fromEntries(
+      Object.entries(bundles).filter(
+        ([date]) =>
+          date >= historyStartKey + "-01" &&
+          date.slice(0, 7) <= currentHistoryKey,
+      ),
+    );
+  useEffect(() => {
+    if (!data || !credentials) return;
+    if (page === "calendar" || page === "playground")
+      void loadMonth(calendarDate);
+    else if (page === "subjects") void loadMonth(currentHistoryMonth);
+  }, [
+    calendarKey,
+    page,
+    data,
+    credentials,
+    months,
+    monthRetry,
+    currentHistoryKey,
+  ]);
+  useEffect(() => {
+    if (
+      page !== "subjects" ||
+      !months[currentHistoryKey] ||
+      historyBootstrap.current
+    )
+      return;
+    historyBootstrap.current = true;
+    const rows = data?.subjectWise?.subjects || [];
+    if (
+      rows.some((subject) => {
+        const count = subjectHistory(
+          subject,
+          rows,
+          historyBundles,
+          clock,
+        ).length;
+        return count < 5 && subject.numberOfClasses > count;
+      })
+    )
+      void loadMonth(olderMonth);
+  }, [page, months, data, currentHistoryKey]);
   const subjects = data?.subjectWise?.subjects || [],
     student = data?.primary?.student;
   const overall = pct(
@@ -611,9 +708,23 @@ export default function App() {
                 <section className="glass">
                   <SectionTitle
                     kicker="YOUR SEMESTER"
-                    title={`${subjects.length} subjects · one clear view`}
+                    title={`${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"} · one clear view`}
                   />
-                  <Subjects subjects={subjects} />
+                  <Subjects
+                    subjects={subjects}
+                    history={{
+                      bundles: historyBundles,
+                      now: clock,
+                      loading: !!monthLoading[currentHistoryKey],
+                      error: monthErrors[currentHistoryKey] || "",
+                      retry: () => setMonthRetry((v) => v + 1),
+                      loadOlder: () => loadMonth(olderMonth),
+                      olderLoading: !!monthLoading[olderKey],
+                      olderError: monthErrors[olderKey] || "",
+                      range: `Loaded from ${historyStart.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} to ${currentHistoryMonth.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`,
+                    }}
+                  />
+
                   <div className="subtle-footer">
                     Percentages are reported by CampX. The planner uses a 75%
                     reference target.
@@ -667,6 +778,10 @@ export default function App() {
                         );
                     }}
                     signOut={signOut}
+                    startTour={() => {
+                      setSettingsOpen(false);
+                      setTourOpen(true);
+                    }}
                   />
                 </CornerSettings>
               )}
@@ -676,7 +791,7 @@ export default function App() {
                   {busy
                     ? "Fetching from CampX…"
                     : updated
-                      ? `Last refreshed at ${updated.toLocaleTimeString("en-IN", { timeZone: CAMPUS_ZONE, hour: "2-digit", minute: "2-digit" })}`
+                      ? `Last refreshed at ${updated.toLocaleTimeString("en-IN", { timeZone: CAMPUS_ZONE, hour: "2-digit", minute: "2-digit", hour12: true })}`
                       : "Not refreshed"}
                 </span>
                 <span>
@@ -711,6 +826,15 @@ export default function App() {
             </button>
           </nav>
         </div>
+      )}
+      {tourOpen && data && (
+        <GuidedTour
+          navigate={setPage}
+          close={() => {
+            markTourSeen();
+            setTourOpen(false);
+          }}
+        />
       )}
       {notice && (
         <div className="toast" role="status">

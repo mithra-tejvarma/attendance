@@ -1,3 +1,5 @@
+import { SubjectHistory } from "./SubjectHistory";
+import { subjectHistory } from "./subjectHistory";
 import { NotificationSettings } from "./NotificationSettings";
 import {
   attendanceFor,
@@ -10,6 +12,10 @@ import {
   classProgress,
   CAMPUS_ZONE,
   campusDateKey,
+  formatClassTime,
+  formatClassRange,
+  slotName,
+  facultyLabel,
 } from "./schedule";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -230,9 +236,21 @@ export function Stat({
 export function Subjects({
   subjects,
   compact = false,
+  history,
 }: {
   subjects: Subject[];
   compact?: boolean;
+  history?: {
+    bundles: Record<string, Bundle>;
+    now: Date;
+    loading: boolean;
+    error: string;
+    retry: () => void;
+    loadOlder: () => Promise<boolean>;
+    olderLoading: boolean;
+    olderError: string;
+    range: string;
+  };
 }) {
   return (
     <div className="subject-list">
@@ -245,32 +263,49 @@ export function Subjects({
         subjects.slice(0, compact ? 5 : undefined).map((s, i) => {
           const n = pct(s.percentage);
           return (
-            <div className="subject-row" key={`${s.subjectName}-${i}`}>
-              <div className={`subject-symbol color-${i % 5}`}>
-                <BookOpen size={18} />
-              </div>
-              <div className="subject-info">
-                <strong>{s.subjectName}</strong>
-                <span>
-                  {s.present ?? "—"} of {s.numberOfClasses ?? "—"} classes
-                  attended
-                </span>
-                <div className="progress-track">
-                  <i
-                    className={`color-${i % 5}`}
-                    style={{ width: `${clamp(n)}%` }}
-                  />
-                  <b style={{ left: "75%" }} />
+            <article
+              className="subject-card"
+              key={`${s.subjectId ?? s.subjectName}-${i}`}
+            >
+              <div className="subject-row">
+                <div className={`subject-symbol color-${i % 5}`}>
+                  <BookOpen size={18} />
+                </div>
+                <div className="subject-info">
+                  <strong>{s.subjectName}</strong>
+                  <span>
+                    {s.present ?? "—"} of {s.numberOfClasses ?? "—"} classes
+                    attended
+                  </span>
+                  <div className="progress-track">
+                    <i
+                      className={`color-${i % 5}`}
+                      style={{ width: `${clamp(n)}%` }}
+                    />
+                    <b style={{ left: "75%" }} />
+                  </div>
+                </div>
+                <div className={`subject-percent ${n < 75 ? "low" : ""}`}>
+                  <strong>
+                    {n.toFixed(1)}
+                    <small>%</small>
+                  </strong>
+                  <span>{n >= 75 ? "On track" : "Below target"}</span>
                 </div>
               </div>
-              <div className={`subject-percent ${n < 75 ? "low" : ""}`}>
-                <strong>
-                  {n.toFixed(1)}
-                  <small>%</small>
-                </strong>
-                <span>{n >= 75 ? "On track" : "Below target"}</span>
-              </div>
-            </div>
+              {history && !compact && (
+                <SubjectHistory
+                  name={s.subjectName}
+                  rows={subjectHistory(
+                    s,
+                    subjects,
+                    history.bundles,
+                    history.now,
+                  )}
+                  {...history}
+                />
+              )}
+            </article>
           );
         })
       )}
@@ -284,14 +319,6 @@ export function Empty({ title, text }: { title: string; text: string }) {
       <h3>{title}</h3>
       <p>{text}</p>
     </div>
-  );
-}
-function slotName(s: import("./data").Slot) {
-  return (
-    s.subjectName ||
-    s.subject?.subjectName ||
-    s.subject?.name ||
-    "Scheduled class"
   );
 }
 function AttendanceBadge({ status }: { status: string }) {
@@ -310,15 +337,36 @@ function AttendanceBadge({ status }: { status: string }) {
     </span>
   );
 }
+function RecordedClassRow({ record }: { record: import("./data").Slot }) {
+  return (
+    <div className="timeline-row record-only">
+      <BookOpen size={18} />
+      <div className="class-content">
+        <h3>{slotName(record)}</h3>
+        <p className="record-time">{formatClassRange(record)}</p>
+        <p className="class-meta">{facultyLabel(record)}</p>
+        <p className="slot-note">Recorded attendance · schedule unavailable</p>
+      </div>
+      <AttendanceBadge status={recordStatus(record)} />
+    </div>
+  );
+}
 export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
   const clock = now.toLocaleTimeString("en-IN", {
     timeZone: CAMPUS_ZONE,
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   });
   const timetable = bundle?.timetable || [];
+  const represented = new Set(
+    timetable.map((slot) => matchingAttendance(slot, bundle!)).filter(Boolean),
+  );
+  const extra = (bundle?.attendance || []).filter(
+    (record) => !represented.has(record),
+  );
   return (
-    <section className="glass today-card">
+    <section className="glass today-card" data-tour="today">
       <SectionTitle
         kicker="YOUR DAY, IN MOTION"
         title="Today’s classes"
@@ -342,8 +390,8 @@ export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
               >
                 <div className="timeline-marker" />
                 <div className="class-time">
-                  <span>{slot.fromTime?.slice(0, 5) || "—"}</span>
-                  <small>{slot.toTime?.slice(0, 5) || "No time"}</small>
+                  <span>{formatClassTime(slot.fromTime)}</span>
+                  <small>{formatClassTime(slot.toTime)}</small>
                 </div>
                 <div className="class-content">
                   <div className="class-heading">
@@ -352,6 +400,14 @@ export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
                       {live && <i />}
                       {phase}
                     </span>
+                  </div>
+                  <div className="class-meta">
+                    {(slot.subjectCode || slot.subject?.subjectCode) && (
+                      <span>
+                        {slot.subjectCode || slot.subject?.subjectCode}
+                      </span>
+                    )}
+                    <span>{facultyLabel(slot)}</span>
                   </div>
                   <p className="slot-note">
                     {status === "Not required"
@@ -377,20 +433,14 @@ export function Today({ bundle, now }: { bundle?: Bundle; now: Date }) {
               </div>
             );
           })}
+          {extra.map((record, i) => (
+            <RecordedClassRow record={record} key={`extra-${record.id ?? i}`} />
+          ))}
         </div>
       ) : bundle?.attendance?.length ? (
         <div className="timeline">
           {bundle.attendance.map((record, i) => (
-            <div className="timeline-row record-only" key={i}>
-              <BookOpen size={18} />
-              <div className="class-content">
-                <h3>{slotName(record)}</h3>
-                <p className="slot-note">
-                  Recorded attendance · schedule unavailable
-                </p>
-              </div>
-              <AttendanceBadge status={recordStatus(record)} />
-            </div>
+            <RecordedClassRow record={record} key={String(record.id ?? i)} />
           ))}
         </div>
       ) : (
@@ -644,8 +694,7 @@ export function DayDetails({
                   <div className="detail-content">
                     <strong>{slotName(slot)}</strong>
                     <span>
-                      {slot.fromTime || "Time unavailable"}
-                      {slot.toTime ? ` – ${slot.toTime}` : ""}
+                      {formatClassRange(slot)}
                       {slot.isSuspended ? " · Cancelled" : ""}
                     </span>
                     {(slot.subjectCode || slot.subject?.subjectCode) && (
@@ -653,7 +702,7 @@ export function DayDetails({
                         {slot.subjectCode || slot.subject?.subjectCode}
                       </small>
                     )}
-                    {slot.facultyName && <small>{slot.facultyName}</small>}
+                    <small>{facultyLabel(slot)}</small>
                   </div>
                   <AttendanceBadge status={attendanceFor(slot, bundle)} />
                 </div>
@@ -668,11 +717,9 @@ export function DayDetails({
                   </div>
                   <div className="detail-content">
                     <strong>{slotName(record)}</strong>
-                    <span>
-                      {record.fromTime || "Class time unavailable"}
-                      {record.toTime ? ` – ${record.toTime}` : ""}
-                    </span>
+                    <span>{formatClassRange(record)}</span>
                     {record.subjectCode && <small>{record.subjectCode}</small>}
+                    <small>{facultyLabel(record)}</small>
                   </div>
                   <AttendanceBadge status={recordStatus(record)} />
                 </div>
@@ -806,6 +853,7 @@ export function Settings({
   install,
   doInstall,
   signOut,
+  startTour,
 }: {
   theme: string;
   setTheme: (s: string, origin?: HTMLElement) => void;
@@ -816,6 +864,7 @@ export function Settings({
   install: InstallEvent | null;
   doInstall: () => void;
   signOut: () => void;
+  startTour: () => void;
 }) {
   return (
     <div className="settings-grid">
@@ -881,11 +930,23 @@ export function Settings({
         </dl>
         <p className="muted">
           Credentials are kept in memory, not browser storage. Reloading
-          requires reconnecting. Usage tracking is not active in this release.
+          requires reconnecting. Private usage totals exclude your password and
+          attendance records.
         </p>
         <button className="button secondary" onClick={signOut}>
           <LogOut size={16} />
           Sign out
+        </button>
+      </section>
+      <section className="glass settings-card">
+        <SectionTitle kicker="LEARN BY DOING" title="Show me around" />
+        <p>
+          Follow a short guided tour on your own dashboard, subjects and
+          calendar.
+        </p>
+        <button className="button secondary" onClick={startTour}>
+          <Sparkles size={16} />
+          Start guided tour
         </button>
       </section>
       <section className="glass settings-card">

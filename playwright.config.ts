@@ -8,6 +8,15 @@ export default defineConfig({
   fullyParallel: true,
   use: {
     baseURL: "http://127.0.0.1:4173",
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://127.0.0.1:4173",
+          localStorage: [{ name: "vl-tour-v1", value: "done" }],
+        },
+      ],
+    },
     launchOptions: { executablePath, args: ["--no-sandbox"] },
   },
   webServer: {

@@ -696,6 +696,14 @@ def test_live_timetable_status_polarity_and_exact_links_are_normalized():
         return {
             "id": identifier,
             "subjectId": "math",
+            "subjectCode": "MAT101",
+            "faculties": [
+                {
+                    "fullName": "Fixture Lecturer",
+                    "email": "PRIVATE",
+                    "mobile": "PRIVATE",
+                }
+            ],
             "sessionDate": "2026-10-01",
             "fromTime": start,
             "toTime": "12:00",
@@ -726,6 +734,9 @@ def test_live_timetable_status_polarity_and_exact_links_are_normalized():
     assert [
         (r["classroomTimetableId"], r["isAbsent"]) for r in bundle["attendance"]
     ] == [("slot-1", 0), ("slot-2", 1)]
+    assert bundle["attendance"][0]["facultyName"] == "Fixture Lecturer"
+    assert bundle["attendance"][0]["subjectCode"] == "MAT101"
+    assert "PRIVATE" not in json.dumps(bundle)
     assert "studentAttendance" not in json.dumps(bundle)
     assert "studentId" not in json.dumps(bundle)
 

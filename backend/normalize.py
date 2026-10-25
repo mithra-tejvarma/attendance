@@ -277,7 +277,7 @@ def daily_bundle(
                 "isAbsent": absent,
             }
         )
-        for key in ("fromTime", "toTime"):
+        for key in ("fromTime", "toTime", "facultyName", "subjectCode"):
             if key in slot:
                 record[key] = slot[key]
         if "subjectName" not in record:

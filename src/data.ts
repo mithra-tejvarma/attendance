@@ -15,6 +15,7 @@ export type Slot = {
     name?: string;
     subjectName?: string;
     subjectCode?: string;
+    subjectType?: { hasAttendance?: boolean };
   };
   fromTime?: string;
   toTime?: string;

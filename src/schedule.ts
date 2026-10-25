@@ -22,9 +22,11 @@ export function campusMinutes(now: Date) {
     Number(parts.find((p) => p.type === "minute")?.value)
   );
 }
-function minutes(value: unknown) {
+export function timeMinutes(value: unknown) {
   if (typeof value !== "string") return null;
-  const match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  const match = value
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
   if (!match) return null;
   let h = Number(match[1]);
   const m = Number(match[2]);
@@ -34,16 +36,16 @@ function minutes(value: unknown) {
 }
 export function classPhase(slot: Slot, now: Date) {
   if (slot.isSuspended === true) return "Cancelled";
-  const start = minutes(slot.fromTime),
-    end = minutes(slot.toTime);
+  const start = timeMinutes(slot.fromTime),
+    end = timeMinutes(slot.toTime);
   if (start === null || end === null || end <= start) return "Time unavailable";
   const clock = campusMinutes(now);
   return clock < start ? "Upcoming" : clock < end ? "Live now" : "Completed";
 }
 export function classProgress(slot: Slot, now: Date) {
   if (slot.isSuspended === true) return 0;
-  const start = minutes(slot.fromTime),
-    end = minutes(slot.toTime);
+  const start = timeMinutes(slot.fromTime),
+    end = timeMinutes(slot.toTime);
   if (start === null || end === null || end <= start) return 0;
   return Math.max(
     0,
@@ -72,13 +74,41 @@ export function matchingAttendance(
       (key) => same(slot[key], r[key]) || same(slot.id, r[key]),
     ),
   );
-  if (exact.length) return exact.length === 1 ? exact[0] : undefined;
+  if (exact.length) {
+    if (exact.length !== 1) return undefined;
+    const record = exact[0],
+      left = subjectId(slot),
+      right = subjectId(record);
+    return left != null && right != null && !same(left, right)
+      ? undefined
+      : record;
+  }
+  // Legacy Render responses carry the exact class link inside studentAttendance.
+  // Read the flag only from the already-owned my-classes record, never from an
+  // unverified embedded student's status.
+  const nested = slot.studentAttendance;
+  if (
+    nested &&
+    typeof nested === "object" &&
+    "id" in nested &&
+    "classroomTimetableId" in nested
+  ) {
+    if (!same(slot.id, nested.classroomTimetableId)) return undefined;
+    const linked = records.filter((record) => same(record.id, nested.id));
+    if (linked.length !== 1) return undefined;
+    const record = linked[0];
+    return subjectId(slot) != null &&
+      subjectId(record) != null &&
+      !same(subjectId(slot), subjectId(record))
+      ? undefined
+      : record;
+  }
   const timed = records.filter(
     (r) =>
       same(subjectId(slot), subjectId(r)) &&
-      minutes(slot.fromTime) !== null &&
-      minutes(r.fromTime) === minutes(slot.fromTime) &&
-      (!r.toTime || minutes(r.toTime) === minutes(slot.toTime)),
+      timeMinutes(slot.fromTime) !== null &&
+      timeMinutes(r.fromTime) === timeMinutes(slot.fromTime) &&
+      (!r.toTime || timeMinutes(r.toTime) === timeMinutes(slot.toTime)),
   );
   if (timed.length) return timed.length === 1 ? timed[0] : undefined;
   // Subject-only matching is safe only when the subject occurs once in each dataset.
@@ -92,7 +122,7 @@ export function matchingAttendance(
     if (
       r.fromTime &&
       slot.fromTime &&
-      minutes(r.fromTime) !== minutes(slot.fromTime)
+      timeMinutes(r.fromTime) !== timeMinutes(slot.fromTime)
     )
       return undefined;
     return r;
@@ -100,15 +130,20 @@ export function matchingAttendance(
   return undefined;
 }
 
+export function requiresAttendance(slot: Slot) {
+  return typeof slot.attendanceRequired === "boolean"
+    ? slot.attendanceRequired
+    : slot.subject?.subjectType?.hasAttendance !== false;
+}
 export function attendanceFor(slot: Slot, bundle: Bundle) {
-  return slot.attendanceRequired === false
+  return !requiresAttendance(slot)
     ? "Not required"
     : recordStatus(matchingAttendance(slot, bundle));
 }
 export function daySummary(bundle?: Bundle) {
   const rows = bundle?.attendance || [],
     required = (bundle?.timetable || []).filter(
-      (slot) => slot.attendanceRequired !== false && slot.isSuspended !== true,
+      (slot) => requiresAttendance(slot) && slot.isSuspended !== true,
     );
   return {
     present: rows.filter((r) => recordStatus(r) === "Present").length,
@@ -147,7 +182,7 @@ export function dayState(raw: string | undefined, bundle?: Bundle): DayState {
   )
     return status;
   const required = (bundle?.timetable || []).filter(
-    (slot) => slot.attendanceRequired !== false && slot.isSuspended !== true,
+    (slot) => requiresAttendance(slot) && slot.isSuspended !== true,
   );
   if (required.length && !summary.pending) {
     const states = required.map((slot) => attendanceFor(slot, bundle!));
@@ -157,4 +192,60 @@ export function dayState(raw: string | undefined, bundle?: Bundle): DayState {
       return "partial";
   }
   return summary.present || summary.absent ? "pending" : "unknown";
+}
+
+export function formatClassTime(value: unknown) {
+  const total = timeMinutes(value);
+  if (total === null) return "Time unavailable";
+  const hour = Math.floor(total / 60);
+  return `${String(hour % 12 || 12).padStart(2, "0")}:${String(total % 60).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+}
+export function formatClassRange(slot: Slot) {
+  const start = formatClassTime(slot.fromTime),
+    end = formatClassTime(slot.toTime);
+  return start === "Time unavailable" && end === "Time unavailable"
+    ? "Time unavailable"
+    : `${start} – ${end}`;
+}
+export function slotName(slot: Slot) {
+  return (
+    slot.subjectName ||
+    slot.subject?.subjectName ||
+    slot.subject?.name ||
+    "Scheduled class"
+  );
+}
+export function classEntries(bundle: Bundle) {
+  const represented = new Set<Slot>();
+  const scheduled = bundle.timetable.map((slot) => {
+    const record = matchingAttendance(slot, bundle);
+    if (record) represented.add(record);
+    return {
+      slot,
+      status:
+        slot.isSuspended && !record ? "Cancelled" : attendanceFor(slot, bundle),
+    };
+  });
+  return [
+    ...scheduled,
+    ...bundle.attendance
+      .filter((row) => !represented.has(row))
+      .map((slot) => ({ slot, status: recordStatus(slot) })),
+  ];
+}
+
+export function facultyLabel(slot: Slot) {
+  if (typeof slot.facultyName === "string" && slot.facultyName.trim())
+    return slot.facultyName;
+  if (Array.isArray(slot.faculties)) {
+    const names = slot.faculties
+      .flatMap((f) =>
+        f && typeof f === "object" && typeof f.fullName === "string"
+          ? [f.fullName.slice(0, 120)]
+          : [],
+      )
+      .slice(0, 3);
+    if (names.length) return names.join(", ");
+  }
+  return "Faculty not provided";
 }

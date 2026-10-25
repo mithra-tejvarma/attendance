@@ -1,4 +1,5 @@
 import type { Bundle, Subject, Slot } from "./data";
+import { requiresAttendance } from "./schedule";
 export type PlanChoices = Record<string, "present" | "absent">;
 export const planKey = (date: string, slot: Slot, index: number) =>
   `${date}:${String(slot.id ?? `${slot.subjectId ?? slot.subject?.id ?? slot.subjectName}:${slot.fromTime}:${index}`)}`;
@@ -12,7 +13,7 @@ export function futureClasses(
     .sort(([a], [b]) => a.localeCompare(b))
     .flatMap(([date, bundle]) =>
       bundle.timetable.flatMap((slot, index) =>
-        slot.isSuspended || slot.attendanceRequired === false
+        slot.isSuspended || !requiresAttendance(slot)
           ? []
           : [{ date, slot, key: planKey(date, slot, index) }],
       ),

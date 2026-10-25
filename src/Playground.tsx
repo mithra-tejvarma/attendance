@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type { Bundle, Dashboard } from "./data";
 import { dayKey, monthKey } from "./data";
-import { campusDateKey } from "./schedule";
+import { campusDateKey, formatClassRange, facultyLabel } from "./schedule";
 import {
   futureClasses,
   projectAttendance,
@@ -293,10 +293,10 @@ export function Playground({
                               item.slot.subject?.name ||
                               "Scheduled class"}
                           </strong>
-                          <span>
-                            {item.slot.fromTime || "Time unavailable"}
-                            {item.slot.toTime ? " – " + item.slot.toTime : ""}
-                          </span>
+                          <span>{formatClassRange(item.slot)}</span>
+                          {item.slot.facultyName && (
+                            <small>{item.slot.facultyName}</small>
+                          )}
                         </div>
                         <button
                           role="switch"
