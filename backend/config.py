@@ -20,7 +20,8 @@ class Settings:
         "http://127.0.0.1:5173",
     )
     cache_seconds: int = 0
-    session_seconds: int = 7200
+    # Zero keeps the revocable app session until explicit sign-out.
+    session_seconds: int = 0
     max_requests: int = 16
     max_operations: int = 8
     max_sessions: int = 1000
@@ -49,7 +50,7 @@ class Settings:
                 if v.strip()
             ),
             cache_seconds=int(os.getenv("CACHE_TTL_SECONDS", "60")),
-            session_seconds=int(os.getenv("SESSION_TTL_SECONDS", "7200")),
+            session_seconds=int(os.getenv("SESSION_TTL_SECONDS", "0")),
             max_requests=int(os.getenv("CAMPX_MAX_CONCURRENCY", "16")),
             max_operations=int(os.getenv("MAX_ACTIVE_OPERATIONS", "8")),
             max_sessions=int(os.getenv("MAX_MEMORY_SESSIONS", "1000")),
@@ -68,7 +69,7 @@ class Settings:
         )
         if not (
             0 <= result.cache_seconds <= 300
-            and 60 <= result.session_seconds <= 86400
+            and (result.session_seconds == 0 or 60 <= result.session_seconds <= 86400)
             and 1 <= result.max_requests <= 64
             and 1 <= result.max_operations <= 64
             and result.max_sessions > 0

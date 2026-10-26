@@ -46,7 +46,7 @@ Backend-only Firebase usage writes and push configuration are now verified/enabl
 
 ## Authentication and data boundaries
 
-- Login calls `/api/attendance`. The new backend returns an opaque app session; subsequent refresh/month requests use that bearer token, not the password. Tokens and credentials remain in memory for this tab, never localStorage or cookies. Reloading requires signing in again; sessions are not restored across browser reloads.
+- Login calls `/api/attendance`. The new backend returns an opaque app session; subsequent refresh/month requests use that bearer token, not the password. Only the opaque app token plus API/build identifiers is remembered on this device; passwords and personal attendance are not written to browser storage. Reloads restore the private saved dashboard. Sign-out, a frontend release change or server revocation clears the remembered session.
 - Legacy CampX browser credentials and attendance caches are cleared on first load of this version. Their old cookie deletion is scoped to the current host and `/` path; host/parent-domain cookies created elsewhere need corresponding server-side cleanup.
 - The previous HTML interface is preserved in `docs/legacy-interface.html` as a migration reference. It is not included in `dist` and should not be served: it contains the previous plaintext browser password behavior.
 - Current-month data is fetched by the server at login; the frontend receives a compact summary and today’s classes. Full month details load when Subjects, Calendar or Playground needs them. Subjects can check one preceding month on demand to fill the first five results; further months require a user action. No five-month prefetch exists.
@@ -98,3 +98,5 @@ Today, Calendar and Playground consistently format valid times in 12-hour AM/PM 
 See [deploy-from-lab.md](docs/deploy-from-lab.md) for frontend-only development with Render, and [database-choice.md](docs/database-choice.md) for the Supabase/Firestore comparison and capacity tradeoffs.
 
 The final tour step includes a prominent CampX source notice: posted changes appear after refresh, while offline attendance and pending corrections must be tracked personally and updated through faculty/college. For a deployed Render service with missing variables, follow [the exact environment setup steps](docs/render-environment-setup.md). The manual Pages build accepts the public repository variable `VITE_API_BASE_URL` when targeting another backend hostname.
+
+For remembered login, deploy both updated frontend/backend and set Render `SESSION_TTL_SECONDS=0`. See [session-persistence.md](docs/session-persistence.md) for restoration, release/sign-out handling, CampX reconnection and deployment verification.

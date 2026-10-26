@@ -173,7 +173,9 @@ export function Login({
           </form>
           <div className="privacy-note">
             <ShieldCheck size={16} />
-            <span>Your password isn’t saved in browser storage.</span>
+            <span>
+              Your sign-in stays on this device. Your password isn’t saved.
+            </span>
           </div>
         </section>
       </main>
@@ -929,9 +931,9 @@ export function Settings({
           </div>
         </dl>
         <p className="muted">
-          Credentials are kept in memory, not browser storage. Reloading
-          requires reconnecting. Private usage totals exclude your password and
-          attendance records.
+          Your app sign-in is remembered on this device until you sign out or
+          the app is updated. Your password is not saved. Sign out on shared
+          devices.
         </p>
         <button className="button secondary" onClick={signOut}>
           <LogOut size={16} />

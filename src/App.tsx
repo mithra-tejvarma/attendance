@@ -1,3 +1,4 @@
+import { ReconnectDialog } from "./ReconnectDialog";
 import { GuidedTour, tourSeen, markTourSeen } from "./GuidedTour";
 import { subjectHistory } from "./subjectHistoryModel";
 import { forgetPushToken } from "./push";
@@ -26,7 +27,22 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { monthKey, readTheme, type Dashboard, type Bundle } from "./data";
-import { login, logout, post, get, type Credentials } from "./api";
+import {
+  login,
+  logout,
+  post,
+  get,
+  refreshDashboard,
+  restoreSession,
+  reconnect,
+  hasSession,
+  SESSION_EVENT,
+  startupNotice,
+  ApiError,
+  type Account,
+  type Credentials,
+  type SavedDashboard,
+} from "./api";
 
 import {
   HelpDialog,
@@ -67,12 +83,17 @@ export default function App() {
     [page, setPage] = useState<Page>("overview");
   const [data, setData] = useState<Dashboard | null>(null),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
+    [error, setError] = useState(startupNotice),
     [updated, setUpdated] = useState<Date | null>(null);
-  const [credentials, setCredentials] = useState<Credentials | null>(null),
+  const [account, setAccount] = useState<Account | null>(null),
     [online, setOnline] = useState(navigator.onLine),
     [install, setInstall] = useState<InstallEvent | null>(null),
     [notice, setNotice] = useState("");
+  const [restoring, setRestoring] = useState(hasSession),
+    [restoreError, setRestoreError] = useState("");
+  const [reconnectRequired, setReconnectRequired] = useState(false),
+    [reconnectOpen, setReconnectOpen] = useState(false);
+  const restoreAttempt = useRef(0);
   const [swUpdate, setSwUpdate] = useState<ServiceWorkerRegistration | null>(
     null,
   );
@@ -92,6 +113,7 @@ export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null),
     [help, setHelp] = useState(false);
+  const latestData = useRef<Dashboard | null>(null);
   const monthRequests = useRef(new Map<string, Promise<boolean>>()),
     historyBootstrap = useRef(false),
     loginLock = useRef(false),
@@ -159,11 +181,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [notice]);
   function apply(next: Dashboard) {
+    const previous = latestData.current;
+    latestData.current = next;
     setData(next);
     const changed =
-      !data ||
-      data.dynamicContext?.classroomId !== next.dynamicContext?.classroomId ||
-      data.dynamicContext?.semNo !== next.dynamicContext?.semNo;
+      !previous ||
+      previous.dynamicContext?.classroomId !==
+        next.dynamicContext?.classroomId ||
+      previous.dynamicContext?.semNo !== next.dynamicContext?.semNo;
     if (changed) {
       contextGeneration.current++;
       monthRequests.current.clear();
@@ -172,7 +197,7 @@ export default function App() {
       setMonthErrors({});
       setPlanChoices({});
       setSelected(null);
-      if (data && next.dynamicContext)
+      if (previous && next.dynamicContext)
         setCalendarDate(
           new Date(
             next.dynamicContext.currentYear,
@@ -205,9 +230,10 @@ export default function App() {
       if (event.data?.type !== "ATTENDANCE_NOTIFICATION_OPEN") return;
       const active = generation.current;
       try {
-        const snapshot = await get<{ data: Dashboard }>("/api/me/dashboard");
+        const snapshot = await get<SavedDashboard>("/api/me/dashboard");
         if (active !== generation.current) return;
         apply(snapshot.data);
+        setReconnectRequired(!!snapshot.campxReconnectRequired);
         setPage("overview");
         setSettingsOpen(false);
         setNotice(
@@ -228,7 +254,9 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
+      const active = generation.current;
       const next = await login(input);
+      if (active !== generation.current) return;
       generation.current++;
       if (next.dynamicContext)
         setCalendarDate(
@@ -239,7 +267,12 @@ export default function App() {
           ),
         );
       setSelected(null);
-      setCredentials(input);
+      setAccount({
+        loginId: input.loginId,
+        legacyCredentials: hasSession() ? undefined : input,
+      });
+      setRestoreError("");
+      setReconnectRequired(false);
       apply(next);
       setPage("overview");
       setTourOpen(!tourSeen());
@@ -250,18 +283,23 @@ export default function App() {
       setBusy(false);
     }
   }
-  function signOut() {
-    logout();
+  function clearAccount() {
+    restoreAttempt.current++;
+    setRestoring(false);
+    setRestoreError("");
+    setReconnectRequired(false);
+    setReconnectOpen(false);
     forgetPushToken();
     generation.current++;
     contextGeneration.current++;
     setBusy(false);
-    setCredentials(null);
+    setAccount(null);
     setSettingsOpen(false);
     setTourOpen(false);
     historyBootstrap.current = false;
     setPlanChoices({});
     setPlanEnd(initialPlanEnd());
+    latestData.current = null;
     setData(null);
     setBundles({});
     setMonths({});
@@ -273,16 +311,113 @@ export default function App() {
     setMonthLoading({});
     setMonthErrors({});
   }
+  function signOut() {
+    logout();
+    clearAccount();
+  }
+  async function restoreAccount() {
+    const attempt = ++restoreAttempt.current,
+      active = generation.current;
+    setRestoring(true);
+    setRestoreError("");
+    try {
+      const snapshot = await restoreSession();
+      if (attempt !== restoreAttempt.current || active !== generation.current)
+        return;
+      setAccount({ loginId: snapshot.loginId });
+      if (snapshot.data.dynamicContext)
+        setCalendarDate(
+          new Date(
+            snapshot.data.dynamicContext.currentYear,
+            snapshot.data.dynamicContext.currentMonth - 1,
+            1,
+          ),
+        );
+      apply(snapshot.data);
+      setReconnectRequired(!!snapshot.campxReconnectRequired);
+      setError("");
+      setPage("overview");
+      const age = Date.now() - Date.parse(snapshot.data.fetchedAt || "");
+      if (
+        !snapshot.campxReconnectRequired &&
+        (!Number.isFinite(age) || age > 60000)
+      ) {
+        setBusy(true);
+        void refreshDashboard()
+          .then((next) => {
+            if (active !== generation.current) return;
+            apply(next);
+            setReconnectRequired(false);
+          })
+          .catch((e) => {
+            if (active !== generation.current) return;
+            if (
+              e instanceof ApiError &&
+              (e.code === "campx_reconnect" || e.code === "campx_session")
+            )
+              setReconnectRequired(true);
+            else setError((e as Error).message);
+          })
+          .finally(() => {
+            if (active === generation.current) setBusy(false);
+          });
+      }
+    } catch (e) {
+      if (attempt !== restoreAttempt.current || active !== generation.current)
+        return;
+      if (e instanceof ApiError && e.code === "session_changed") return;
+      if (hasSession()) setRestoreError((e as Error).message);
+      else setError((e as Error).message);
+      if (
+        e instanceof ApiError &&
+        (e.code === "campx_reconnect" || e.code === "campx_session")
+      )
+        setReconnectRequired(true);
+    } finally {
+      if (attempt === restoreAttempt.current && active === generation.current)
+        setRestoring(false);
+    }
+  }
+  useEffect(() => {
+    const changed = (event: Event) => {
+      clearAccount();
+      const message = (event as CustomEvent<{ message?: string }>).detail
+        ?.message;
+      if (hasSession()) void restoreAccount();
+      else if (message) setError(message);
+    };
+    window.addEventListener(SESSION_EVENT, changed);
+    return () => window.removeEventListener(SESSION_EVENT, changed);
+  }, []);
+  useEffect(() => {
+    if (hasSession()) void restoreAccount();
+    return () => {
+      restoreAttempt.current++;
+    };
+  }, []);
+  async function reconnectAccount(input: Credentials) {
+    const active = generation.current;
+    const next = await reconnect(input);
+    if (active !== generation.current) return;
+    setAccount({ loginId: input.loginId });
+    apply(next);
+    setReconnectRequired(false);
+    setReconnectOpen(false);
+    setRestoreError("");
+    setError("");
+    setNotice("CampX is connected again. Your attendance is up to date.");
+  }
   async function refresh() {
     if (busy) return;
-    if (!credentials) return;
+    if (!account) return;
     const token = generation.current;
     setBusy(true);
     setError("");
     try {
-      const next = await login(credentials);
+      const next = await refreshDashboard(account.legacyCredentials);
       if (token === generation.current) {
         apply(next);
+        setReconnectRequired(false);
         setNotice(
           next.source === "cache"
             ? "Showing your recent saved attendance. Check the refresh time below."
@@ -290,11 +425,33 @@ export default function App() {
         );
       }
     } catch (e) {
-      if (token === generation.current) setError((e as Error).message);
+      if (token === generation.current) {
+        setError((e as Error).message);
+        if (
+          e instanceof ApiError &&
+          (e.code === "campx_reconnect" || e.code === "campx_session")
+        )
+          setReconnectRequired(true);
+      }
     } finally {
       if (token === generation.current) setBusy(false);
     }
   }
+  useEffect(() => {
+    const resume = () => {
+      if (
+        document.visibilityState !== "visible" ||
+        !account ||
+        busy ||
+        reconnectRequired
+      )
+        return;
+      const age = Date.now() - Date.parse(latestData.current?.fetchedAt || "");
+      if (!Number.isFinite(age) || age > 60000) void refresh();
+    };
+    document.addEventListener("visibilitychange", resume);
+    return () => document.removeEventListener("visibilitychange", resume);
+  }, [account, busy, reconnectRequired]);
   const calendarKey = monthKey(calendarDate);
   const monthBusy = !!monthLoading[calendarKey],
     monthError = monthErrors[calendarKey] || "";
@@ -322,7 +479,7 @@ export default function App() {
   async function loadMonth(target: Date): Promise<boolean> {
     const key = monthKey(target);
     if (months[key]) return true;
-    if (!data || !credentials) return false;
+    if (!data || !account) return false;
     const running = monthRequests.current.get(key);
     if (running) return running;
     const active = generation.current,
@@ -333,7 +490,7 @@ export default function App() {
       monthlyCalendar: Record<string, string>;
       dailyBundle: Record<string, Bundle>;
     }>("/api/month-complete-data", {
-      ...credentials,
+      ...account.legacyCredentials,
       month: target.getMonth() + 1,
       year: target.getFullYear(),
       classroomId: data.dynamicContext?.classroomId,
@@ -353,8 +510,14 @@ export default function App() {
         if (
           active === generation.current &&
           scope === contextGeneration.current
-        )
+        ) {
           setMonthErrors((prev) => ({ ...prev, [key]: e.message }));
+          if (
+            e instanceof ApiError &&
+            (e.code === "campx_reconnect" || e.code === "campx_session")
+          )
+            setReconnectRequired(true);
+        }
         return false;
       })
       .finally(() => {
@@ -396,19 +559,11 @@ export default function App() {
       ),
     );
   useEffect(() => {
-    if (!data || !credentials) return;
+    if (!data || !account) return;
     if (page === "calendar" || page === "playground")
       void loadMonth(calendarDate);
     else if (page === "subjects") void loadMonth(currentHistoryMonth);
-  }, [
-    calendarKey,
-    page,
-    data,
-    credentials,
-    months,
-    monthRetry,
-    currentHistoryKey,
-  ]);
+  }, [calendarKey, page, data, account, months, monthRetry, currentHistoryKey]);
   useEffect(() => {
     if (
       page !== "subjects" ||
@@ -483,7 +638,35 @@ export default function App() {
         toggle={toggleTheme}
         settings={data ? () => setSettingsOpen(true) : undefined}
       />
-      {!data ? (
+      {!data && (restoring || restoreError) ? (
+        <div className="session-gate">
+          <Brand />
+          <section className="glass">
+            {restoring && <RefreshCw className="spin" size={25} />}
+            <h1>
+              {restoring ? "Opening your account…" : "Your sign-in is saved"}
+            </h1>
+            <p>{restoring ? "Loading your saved attendance." : restoreError}</p>
+            <div className="session-gate-actions">
+              {!restoring && (
+                <button
+                  className="button primary"
+                  onClick={() =>
+                    reconnectRequired
+                      ? setReconnectOpen(true)
+                      : void restoreAccount()
+                  }
+                >
+                  {reconnectRequired ? "Reconnect CampX" : "Try again"}
+                </button>
+              )}
+              <button className="button secondary" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : !data ? (
         <Login busy={busy} error={error} login={authenticate} />
       ) : (
         <div className="app-shell">
@@ -543,7 +726,18 @@ export default function App() {
                   You're offline. Showing data from this open session.
                 </div>
               )}
-              {error && (
+              {reconnectRequired && (
+                <div className="alert" role="status">
+                  <span>
+                    You’re still signed in. Reconnect CampX to load new
+                    attendance; your saved records remain available.
+                  </span>
+                  <button onClick={() => setReconnectOpen(true)}>
+                    Reconnect CampX
+                  </button>
+                </div>
+              )}
+              {error && !reconnectRequired && (
                 <div className="alert" role="alert">
                   {error}
                   <button onClick={refresh}>Retry</button>
@@ -764,7 +958,7 @@ export default function App() {
                     theme={theme}
                     setTheme={changeTheme}
                     student={student}
-                    loginId={credentials?.loginId}
+                    loginId={account?.loginId}
                     classroom={data.primary?.classroom?.name}
                     semester={data.dynamicContext?.semNo}
                     install={install}
@@ -826,6 +1020,13 @@ export default function App() {
             </button>
           </nav>
         </div>
+      )}
+      {reconnectOpen && (
+        <ReconnectDialog
+          loginId={account?.loginId}
+          close={() => setReconnectOpen(false)}
+          submit={reconnectAccount}
+        />
       )}
       {tourOpen && data && (
         <GuidedTour

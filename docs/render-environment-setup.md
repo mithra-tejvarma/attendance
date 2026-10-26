@@ -22,7 +22,7 @@ In Render's Environment page, choose **Add from .env** (or the equivalent bulk-i
 | `SUPABASE_SERVICE_ROLE_KEY` | Existing server-only service-role key from the private import file |
 | `CAMPX_ENCRYPTION_KEY` | Existing persistent Fernet key from the private import file |
 | `CACHE_TTL_SECONDS` | `60` |
-| `SESSION_TTL_SECONDS` | `7200` |
+| `SESSION_TTL_SECONDS` | `0` for remembered login until sign-out/revocation |
 | `CAMPX_MAX_CONCURRENCY` | `16` |
 | `MAX_ACTIVE_OPERATIONS` | `8` |
 | `FIREBASE_PROJECT_ID` | `attendance-90c12` |
@@ -102,7 +102,7 @@ In cron-job.org, create the following jobs using your deployed API URL:
 
 For every job add an HTTP header named `Authorization` with value `Bearer ` followed by the **exact `CRON_SECRET`** from your Render environment, including the space after Bearer. No request body is needed. Do not place the secret in the URL. An old GET liveness ping does not run these jobs. Check job history for HTTP 200; a 401 means the header/secret does not match.
 
-The default checking batch is a small pilot setting, not capacity for frequent checks of 2,000 students. Read [rollout.md](rollout.md) before increasing enrollment. Background checks need a valid CampX connection and the app session defaults to two hours; they do not continue indefinitely after login expires.
+The default checking batch is a small pilot setting, not capacity for frequent checks of 2,000 students. Read [rollout.md](rollout.md) before increasing enrollment. Background checks need a valid CampX connection even when the app login is remembered. CampX can independently require reconnection; it is not bypassed by the app-session setting.
 
 ## 7. Connect and publish the React frontend
 
@@ -113,3 +113,5 @@ For lab development, put the public API URL in `.env.local`, restart Vite, and e
 In GitHub Settings → Pages, keep the custom domain `attendance.varmalabs.tech` and choose GitHub Actions as source. The default `main` branch currently has no Pages workflow, so first create/review a pull request from `feature/react-attendance-pwa` into `main` and merge it when ready to publish. GitHub's manual workflow trigger requires the workflow file on the default branch. Then open Actions → **Publish React frontend to GitHub Pages** → Run workflow and select `main`. It publishes `dist`, not raw source. Wait for success and verify login, the tour's final CampX note, subject history, calendar and logout on the custom domain. Render may continue to use the feature branch, or you can point it to the reviewed merged branch; ensure the deployed code includes the same changes.
 
 If you created two Render services, import the same shared database/encryption/Firebase/scheduler settings and add the secret file to each. The frontend still uses one API base URL; merely deploying a second service does not configure traffic distribution or failover.
+
+For the remembered-login update, deploy the new backend, save/redeploy `SESSION_TTL_SECONDS=0`, then publish the new frontend. `/health/ready` should report `sessionTtlSeconds: 0`. No additional SQL migration is required; see [session-persistence.md](session-persistence.md).

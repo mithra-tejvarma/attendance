@@ -25,6 +25,8 @@ from .usage import Usage
 
 CAMPUS = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger("attendance")
+# The existing NOT NULL expiry column needs no schema migration for remembered sessions.
+UNTIL_SIGN_OUT = datetime(9999, 12, 31, 23, 59, 59, tzinfo=UTC).isoformat()
 
 
 class Credentials(BaseModel):
@@ -282,9 +284,13 @@ class Service:
                         "context": ctx,
                         "connection": client.connection(),
                         "expires_at": (
-                            datetime.now(UTC)
-                            + timedelta(seconds=self.settings.session_seconds)
-                        ).isoformat(),
+                            (
+                                datetime.now(UTC)
+                                + timedelta(seconds=self.settings.session_seconds)
+                            ).isoformat()
+                            if self.settings.session_seconds
+                            else UNTIL_SIGN_OUT
+                        ),
                     }
                     await self.store.save_student(uid, data["primary"]["student"])
                     await self.store.put_session(session)
@@ -303,9 +309,75 @@ class Service:
                     **returned,
                     "sessionToken": token,
                     "sessionExpiresAt": session["expires_at"],
+                    "loginId": client.login_id,
                 }
             finally:
                 if uid:
+                    self.usage.emit(uid, "login", client.calls, success)
+
+    async def reconnect(self, request, credentials):
+        """Renew CampX access for the current student without replacing the app login."""
+        self.login_limit(request, credentials)
+        async with self.admitted():
+            session = await self.session(request)
+            uid, success = session["student_id"], False
+            async with self.client() as client:
+                try:
+                    await client.authenticate(
+                        credentials.loginId, credentials.password.get_secret_value()
+                    )
+                    primary = await client.get(PRIMARY)
+                    ctx = context(primary)
+                    if ctx["studentId"] != uid:
+                        raise ServiceError(
+                            403,
+                            "account_mismatch",
+                            "Use the same CampX account, or sign out before switching students.",
+                        )
+                    async with self.student_lease(uid):
+                        now = datetime.now(CAMPUS)
+                        data = await self.dashboard(
+                            client, primary, ctx, now.year, now.month
+                        )
+                        session.update(context=ctx, connection=client.connection())
+                        # PATCH only: a concurrent logout must never recreate this session.
+                        await self.store.update_session(session)
+                        await self.store.save_student(uid, data["primary"]["student"])
+                        compact = await self.persist_dashboard(uid, data)
+                        if self.settings.notifications_enabled and hasattr(
+                            self.store, "request"
+                        ):
+                            try:
+                                await self.store.request(
+                                    "PATCH",
+                                    "push_subscriptions",
+                                    params={
+                                        "session_token_hash": "eq."
+                                        + session["token_hash"],
+                                        "student_id": "eq." + uid,
+                                    },
+                                    json={
+                                        "enabled": True,
+                                        "next_check_at": datetime.now(UTC).isoformat(),
+                                    },
+                                )
+                            except ServiceError:
+                                logger.warning(
+                                    "Notification subscription renewal failed; CampX reconnection succeeded"
+                                )
+                    success = True
+                    result = (
+                        compact
+                        if "application/vnd.varmalabs.compact+json"
+                        in request.headers.get("accept", "")
+                        else data
+                    )
+                    return {
+                        **result,
+                        "loginId": client.login_id,
+                        "campxReconnectRequired": False,
+                    }
+                finally:
                     self.usage.emit(uid, "login", client.calls, success)
 
     async def run(self, request, body=None, operation="refresh"):
@@ -317,6 +389,12 @@ class Service:
             session = None
             if request.headers.get("authorization"):
                 session = await self.session(request)
+                if session["connection"].get("reconnectRequired"):
+                    raise ServiceError(
+                        428,
+                        "campx_reconnect",
+                        "Your CampX connection expired. Reconnect to load new records; your saved dashboard is still available.",
+                    )
             elif not body or not body.loginId or body.password is None:
                 raise ServiceError(401, "app_session", "Please reconnect to CampX.")
             else:
@@ -500,6 +578,19 @@ class Service:
                     success = True
                     return data
                 except ServiceError as error:
+                    if (
+                        session
+                        and error.code
+                        in {"campx_session", "session_invalid", "student_context"}
+                        and error.status in (401, 502)
+                    ):
+                        session["connection"]["reconnectRequired"] = True
+                        await self.store.update_session(session)
+                        raise ServiceError(
+                            428,
+                            "campx_reconnect",
+                            "Your CampX connection expired. Reconnect to load new records; your saved dashboard is still available.",
+                        ) from None
                     if error.status == 401 and session:
                         await self.store.delete_session(session["token_hash"])
                     raise
@@ -586,6 +677,7 @@ def create_app(settings=None, store=None, transport=None, usage=None):
             return {
                 "status": "ok",
                 "storage": await service.store.ready(),
+                "sessionTtlSeconds": settings.session_seconds,
                 "usage": "enabled-best-effort"
                 if settings.firebase_usage
                 else "disabled",
@@ -598,6 +690,10 @@ def create_app(settings=None, store=None, transport=None, usage=None):
     @app.post("/api/refresh")
     async def refresh(request: Request):
         return await request.app.state.service.run(request)
+
+    @app.post("/api/reconnect")
+    async def reconnect(request: Request, body: UserCredentials):
+        return await request.app.state.service.reconnect(request, body)
 
     @app.post("/api/month-complete-data")
     async def month(request: Request, body: MonthBatchRequest):
@@ -621,7 +717,15 @@ def create_app(settings=None, store=None, transport=None, usage=None):
                     404, "snapshot_missing", "No saved dashboard is available yet."
                 )
             service.usage.emit(session["student_id"], "dashboard", 0, True)
-            return {**snapshot, "source": "saved"}
+            return {
+                **snapshot,
+                "source": "saved",
+                "loginId": session["connection"].get("loginId"),
+                "campxReconnectRequired": bool(
+                    session["connection"].get("reconnectRequired")
+                ),
+                "sessionExpiresAt": session["expires_at"],
+            }
 
     class PushToken(BaseModel):
         model_config = ConfigDict(extra="forbid")

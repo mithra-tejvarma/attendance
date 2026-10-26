@@ -508,3 +508,79 @@ body::before {
     backdrop-filter: none;
   }
 }
+.session-gate {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 30px;
+  padding: 28px;
+}
+.session-gate > section {
+  width: min(100%, 440px);
+  padding: 32px;
+}
+.session-gate h1 {
+  font-size: 28px;
+  margin: 15px 0;
+}
+.session-gate p {
+  font-size: 14px;
+}
+.session-gate-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+dialog.reconnect-dialog {
+  color: var(--text);
+  width: min(440px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+  padding: 30px;
+}
+.reconnect-dialog::backdrop {
+  background: #05091a99;
+}
+.reconnect-dialog h2 {
+  margin: 15px 0 10px;
+  font-size: 25px;
+}
+.reconnect-dialog p {
+  font-size: 13px;
+}
+.reconnect-dialog .close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.reconnect-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+.reconnect-dialog label {
+  font-size: 12px;
+  margin-top: 4px;
+}
+.reconnect-dialog input {
+  min-width: 0;
+  width: 100%;
+  background: var(--input);
+  border: 1px solid var(--line);
+  padding: 12px;
+  color: var(--text);
+  font-size: 16px;
+}
+.reconnect-dialog form .button {
+  margin-top: 10px;
+}
+.reconnect-dialog > small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 15px;
+}

@@ -42,6 +42,7 @@ class Campx:
             follow_redirects=False,
         )
         self.semaphore, self.calls = semaphore, 0
+        self.login_id = connection.get("loginId") if connection else None
         if connection:
             if connection.get("bearer"):
                 self.client.headers["authorization"] = "Bearer " + connection["bearer"]
@@ -176,10 +177,12 @@ class Campx:
                 "upstream_auth_schema",
                 "CampX did not return a supported session. The login response needs inspection.",
             )
+        self.login_id = login_id.strip()
 
     def connection(self):
         bearer = self.client.headers.get("authorization", "")
         return {
+            "loginId": self.login_id,
             "bearer": bearer.removeprefix("Bearer ") if bearer else None,
             "cookies": [
                 {

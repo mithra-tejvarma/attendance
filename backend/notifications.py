@@ -222,6 +222,12 @@ class Notifications:
         ctx = session["context"]
         uid = session["student_id"]
         cached = await self.store.get_snapshot(uid, "today:" + day)
+        if session["connection"].get("reconnectRequired"):
+            raise ServiceError(
+                428,
+                "campx_reconnect",
+                "Reconnect to CampX to resume background checks.",
+            )
         if fresh(cached, ctx, 60):
             return cached["data"], day
         dashboard = await self.store.get_snapshot(uid, "dashboard")
@@ -309,7 +315,12 @@ class Notifications:
             )
             return changed is True
         except (ServiceError, TimeoutError) as error:
-            if isinstance(error, ServiceError) and error.status == 401:
+            if isinstance(error, ServiceError) and (
+                error.status in (401, 428) or error.code == "campx_session"
+            ):
+                if hasattr(self.store, "update_session"):
+                    session.setdefault("connection", {})["reconnectRequired"] = True
+                    await self.store.update_session(session)
                 await self.store.request(
                     "PATCH",
                     "push_subscriptions",
