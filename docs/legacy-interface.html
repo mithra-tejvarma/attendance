@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Portal</title>
+    <style>
+        :root {
+            --bg: #090d16;
+            --surface: #111827;
+            --surface-hover: #1f2937;
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --border: #1f2937;
+            --present: #10b981;
+            --absent: #ef4444;
+            --partial: #f59e0b;
+            --gold: #fbbf24;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+        body {
+            background-color: var(--bg); color: var(--text); min-height: 100vh;
+            padding: 12px 8px; display: flex; justify-content: center;
+        }
+
+        .app-container { width: 100%; max-width: 950px; }
+
+        #login-view {
+            max-width: 380px; margin: 60px auto; text-align: center;
+            background: var(--surface); padding: 28px 20px;
+            border-radius: 16px; border: 1px solid var(--border);
+        }
+        h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+        p.subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+
+        input {
+            width: 100%; padding: 12px 14px; margin-bottom: 14px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 14px; outline: none;
+        }
+        input:focus { border-color: var(--primary); }
+
+        button.btn-primary {
+            width: 100%; padding: 12px; background: var(--primary);
+            color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+
+        .top-badge-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            gap: 10px; margin-bottom: 12px; position: relative;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4), inset 0 0 5px rgba(99, 102, 241, 0.2); }
+            50% { box-shadow: 0 0 18px rgba(99, 102, 241, 0.85), inset 0 0 10px rgba(99, 102, 241, 0.5); }
+            100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4), inset 0 0 5px rgba(99, 102, 241, 0.2); }
+        }
+
+        .roll-semicircle-badge {
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.25) 0%, rgba(17, 24, 39, 0.95) 100%);
+            border: 1.5px solid var(--primary); border-top: none;
+            color: var(--text); padding: 7px 22px 9px 22px;
+            border-bottom-left-radius: 22px; border-bottom-right-radius: 22px;
+            font-weight: 800; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase;
+            cursor: pointer; animation: pulseGlow 2.5s infinite ease-in-out; transition: transform 0.2s;
+            display: flex; align-items: center; gap: 6px; user-select: none;
+        }
+        .roll-semicircle-badge:hover { transform: translateY(2px); }
+        .badge-arrow { font-size: 10px; color: var(--primary-light); transition: transform 0.3s; }
+        .badge-arrow.rotated { transform: rotate(180deg); }
+
+        .btn-sync-refresh {
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 15px; transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .btn-sync-refresh:hover { border-color: var(--primary); color: var(--primary-light); transform: rotate(180deg); }
+        .btn-sync-refresh.spinning { animation: spin 1s linear infinite; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .profile-drawer {
+            width: 100%; max-width: 450px; max-height: 0; overflow: hidden;
+            transition: max-height 0.4s ease-in-out, margin 0.3s ease, opacity 0.3s ease; opacity: 0;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-top: 0;
+        }
+        .profile-drawer.open { max-height: 300px; opacity: 1; margin-top: 10px; margin-bottom: 12px; padding: 16px; }
+        .profile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .prof-item { background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); }
+        .prof-item.full-width { grid-column: span 2; }
+        .prof-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+        .prof-val { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* HOLIDAY ANNOUNCEMENT BANNERS */
+        .holiday-announcement-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .holiday-announcement-banner {
+            display: none;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+            border: 1px solid var(--partial);
+            border-radius: 12px; padding: 12px 16px;
+            color: var(--text); font-size: 13px; font-weight: 600;
+            align-items: center; justify-content: space-between;
+        }
+
+        .feature-hint-banner {
+            background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+            display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--primary-light); font-weight: 500;
+        }
+        .hint-close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 0 4px; }
+
+        .top-metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px; }
+        .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 4px; text-align: center; }
+        .metric-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .metric-value { font-size: 16px; font-weight: 800; color: var(--text); }
+
+        .dashboard-content-grid { display: flex; flex-direction: column; gap: 16px; }
+
+        .panel-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 14px; }
+        .panel-header {
+            font-size: 15px; font-weight: 700; margin-bottom: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px;
+        }
+
+        .calendar-nav { display: flex; align-items: center; gap: 10px; }
+        .cal-nav-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; }
+        .cal-nav-btn:hover { border-color: var(--primary); }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .cal-day-name { font-size: 11px; color: var(--text-muted); font-weight: 700; padding-bottom: 6px; }
+        .cal-date {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--bg); font-size: 12px; font-weight: 600;
+            cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+        }
+        .cal-date:hover { border-color: var(--primary); background: var(--surface-hover); }
+        .status-present { background: rgba(16, 185, 129, 0.22); color: var(--present); font-weight: 800; border-color: rgba(16, 185, 129, 0.3); }
+        .status-absent { background: rgba(239, 68, 68, 0.22); color: var(--absent); font-weight: 800; border-color: rgba(239, 68, 68, 0.3); }
+        .status-partial { background: rgba(245, 158, 11, 0.22); color: var(--partial); font-weight: 800; border-color: rgba(245, 158, 11, 0.3); }
+
+        .subject-scroll-area { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+        .subject-row-strict { display: grid; grid-template-columns: 1.2fr 1fr 48px 45px; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .subj-name-col { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .subj-bar-wrapper { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+        .subj-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+        .subj-pct-badge { font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 6px; text-align: center; }
+        .subj-classes-count { font-size: 11px; color: var(--text-muted); font-weight: 600; text-align: right; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); justify-content: center; align-items: center; padding: 16px; z-index: 100; }
+        .modal-card { background: var(--surface); border: 1px solid var(--border); width: 100%; max-width: 440px; border-radius: 16px; padding: 20px; }
+        .no-record-banner { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--partial); color: var(--partial); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 10px; }
+        .period-list { margin-top: 14px; max-height: 300px; overflow-y: auto; }
+        .period-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+
+        /* SHINING GOLD TIME BADGE EFFECT FOR ALL SLOTS */
+        @keyframes goldShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .period-time-badge, .badge-tt {
+            font-size: 11px;
+            font-weight: 700;
+            color: #fef08a;
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.12) 0%, rgba(253, 224, 71, 0.35) 50%, rgba(251, 191, 36, 0.12) 100%);
+            background-size: 200% 100%;
+            animation: goldShimmer 3s infinite linear;
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+            display: inline-block;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.15);
+            text-shadow: 0 0 4px rgba(251, 191, 36, 0.3);
+        }
+
+        .badge-p { color: var(--present); font-weight: 800; }
+        .badge-a { color: var(--absent); font-weight: 800; }
+
+        .signout-container { display: flex; justify-content: center; margin-top: 16px; }
+        .btn-signout { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 20px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        .loader { display: none; margin-top: 10px; color: var(--primary); font-size: 13px; }
+
+        /* ===== ATTENDANCE PLAYGROUND FAB (COLLAPSED ARROW < TO EXPANDED SEMICIRCLE 🎮) ===== */
+        .pg-fab-container {
+            position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+            z-index: 150; user-select: none; touch-action: none;
+        }
+
+        /* Collapsed minimal arrow tab (<) - NO GLOW */
+        .pg-fab-collapsed {
+            width: 22px; height: 44px;
+            background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border); border-right: none;
+            border-radius: 18px 0 0 18px; color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 15px; font-weight: 800;
+            transition: all 0.25s ease; box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+        }
+        .pg-fab-collapsed:hover {
+            width: 28px; color: var(--primary-light); border-color: var(--primary);
+            background: rgba(31, 41, 55, 0.98);
+        }
+
+        /* Expanded semicircle badge with 🎮 icon */
+        .pg-fab-expanded {
+            display: none; width: 50px; height: 52px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.95) 100%);
+            border: 1.5px solid var(--primary-light); border-right: none;
+            border-radius: 28px 0 0 28px; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: -4px 0 18px rgba(99, 102, 241, 0.35);
+            position: relative; animation: slideInFab 0.2s ease-out;
+        }
+        @keyframes slideInFab { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .pg-fab-expanded:hover { width: 56px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        .pg-fab-icon { font-size: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .pg-fab-close {
+            position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: rgba(255,255,255,0.7);
+            font-size: 12px; font-weight: 800; cursor: pointer; padding: 2px;
+        }
+
+        #playground-view {
+            position: fixed; inset: 0; background: rgba(9, 13, 22, 0.97); backdrop-filter: blur(12px);
+            z-index: 200; overflow-y: auto; padding: 16px; opacity: 0; transform: scale(0.97) translateY(15px);
+            pointer-events: none; transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: block !important;
+        }
+        #playground-view.open {
+            opacity: 1; transform: scale(1) translateY(0); pointer-events: auto;
+        }
+
+        .pg-inner { max-width: 520px; margin: 0 auto; }
+
+        .pg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .pg-header-left { display: flex; align-items: center; gap: 12px; }
+        .pg-back-btn {
+            background: var(--surface); border: 1px solid var(--border); color: var(--text);
+            width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; font-size: 18px; transition: all 0.2s; flex-shrink: 0;
+        }
+        .pg-back-btn:hover { border-color: var(--primary); color: var(--primary-light); }
+        .pg-title { font-size: 18px; font-weight: 800; color: var(--text); }
+
+        .pg-info-btn {
+            background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35);
+            color: var(--primary-light); padding: 6px 12px; border-radius: 10px;
+            font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .pg-info-btn:hover { background: rgba(99, 102, 241, 0.3); border-color: var(--primary); }
+
+        /* ACTION MODE GUIDED DEMO BANNER */
+        .pg-action-guide-banner {
+            position: sticky; top: 0; z-index: 280;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.92) 0%, rgba(139, 92, 246, 0.92) 100%);
+            border: 1px solid var(--primary-light); border-radius: 12px;
+            padding: 10px 14px; margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35); animation: pulseBanner 2s infinite ease-in-out;
+        }
+        @keyframes pulseBanner { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
+        .pg-action-guide-text { font-size: 12px; font-weight: 700; color: white; line-height: 1.4; }
+        .pg-action-guide-next {
+            background: white; color: var(--primary); border: none; border-radius: 8px;
+            padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .pg-action-guide-next:hover { background: #f0f0ff; transform: scale(1.04); }
+
+        /* CAMPX REFLECTION DISCLAIMER MODAL */
+        .pg-disclaimer-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px);
+            z-index: 380; display: flex; align-items: center; justify-content: center; padding: 16px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        .pg-disclaimer-card {
+            background: var(--surface); border: 1.5px solid var(--partial);
+            border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 420px;
+            text-align: center; box-shadow: 0 12px 40px rgba(245, 158, 11, 0.25);
+            animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pg-disclaimer-icon { font-size: 38px; margin-bottom: 8px; }
+        .pg-disclaimer-card h3 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+        .pg-disclaimer-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; text-align: left; }
+        .pg-tut-next:hover { background: var(--primary-light); }
+
+        .pg-hint {
+            background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 12px; color: var(--primary-light); font-weight: 500; text-align: center; line-height: 1.5;
+        }
+
+        .pg-results-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 16px; margin-bottom: 14px;
+        }
+        .pg-result-main {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .pg-result-label {
+            font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+            font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px;
+        }
+        .pg-projected-pct { font-size: 38px; font-weight: 900; transition: color 0.3s; }
+
+        .pg-status-badge {
+            padding: 7px 14px; border-radius: 20px; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .pg-status-safe { background: rgba(16, 185, 129, 0.15); color: var(--present); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .pg-status-risky { background: rgba(245, 158, 11, 0.15); color: var(--partial); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .pg-status-danger { background: rgba(239, 68, 68, 0.15); color: var(--absent); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .pg-progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+        .pg-progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease, background-color 0.3s; }
+
+        .pg-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .pg-stat-item { background: var(--bg); padding: 8px 6px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+        .pg-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+        .pg-stat-value { font-size: 14px; font-weight: 800; color: var(--text); }
+
+        .pg-danger-msg {
+            background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 12px; color: var(--absent); font-weight: 600; text-align: center;
+            display: none; line-height: 1.5;
+        }
+
+        .pg-legend {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+            padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+        }
+        .pg-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .pg-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+        .pg-calendar-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; margin-bottom: 14px;
+        }
+        .pg-cal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        .pg-cal-title { font-size: 15px; font-weight: 700; color: var(--text); }
+
+        .pg-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+
+        .pg-cal-date {
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--bg); font-size: 12px; font-weight: 600;
+            border: 1.5px solid transparent; transition: all 0.2s ease; position: relative; user-select: none;
+        }
+
+        .pg-cal-date.past-present { background: rgba(16, 185, 129, 0.12); color: var(--present); border-color: rgba(16, 185, 129, 0.15); opacity: 0.6; }
+        .pg-cal-date.past-absent { background: rgba(239, 68, 68, 0.12); color: var(--absent); border-color: rgba(239, 68, 68, 0.15); opacity: 0.6; }
+        .pg-cal-date.past-partial { background: rgba(245, 158, 11, 0.12); color: var(--partial); border-color: rgba(245, 158, 11, 0.15); opacity: 0.6; }
+        .pg-cal-date.today-marker { border-color: var(--primary) !important; box-shadow: 0 0 10px rgba(99, 102, 241, 0.35); opacity: 1; }
+
+        .pg-cal-date.future-present {
+            background: rgba(16, 185, 129, 0.2); color: var(--present);
+            border-color: rgba(16, 185, 129, 0.4); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-present:hover { background: rgba(16, 185, 129, 0.32); transform: scale(1.08); }
+        .pg-cal-date.future-present:active { transform: scale(0.95); }
+
+        .pg-cal-date.future-absent {
+            background: rgba(239, 68, 68, 0.25); color: var(--absent);
+            border-color: rgba(239, 68, 68, 0.5); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-absent:hover { background: rgba(239, 68, 68, 0.4); transform: scale(1.08); }
+        .pg-cal-date.future-absent:active { transform: scale(0.95); }
+
+        .pg-cal-date.no-classes { opacity: 0.25; cursor: default; }
+
+        .pg-class-count { font-size: 7px; opacity: 0.75; margin-top: 1px; letter-spacing: 0.3px; }
+
+        .pg-footer-actions { display: flex; gap: 8px; margin-bottom: 20px; }
+        .pg-reset-btn {
+            flex: 1; padding: 12px; background: var(--surface); border: 1px solid var(--border);
+            color: var(--text-muted); border-radius: 12px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .pg-reset-btn:hover { border-color: var(--primary); color: var(--text); }
+
+        /* PLAYGROUND SUBJECT BREAKDOWN */
+        .pg-subjects-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; margin-bottom: 14px;
+        }
+        .pg-subjects-header {
+            font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px;
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .pg-subjects-header span:last-child { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .pg-subject-list { display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; padding-right: 4px; }
+        .pg-subject-row {
+            display: grid; grid-template-columns: 1.3fr 1fr 48px 50px; align-items: center; gap: 6px;
+            padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        .pg-subject-row.pg-subj-danger { border-color: rgba(239, 68, 68, 0.3); }
+        .pg-subject-row.pg-subj-risky { border-color: rgba(245, 158, 11, 0.3); }
+        .pg-subj-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pg-subj-bar-wrap { width: 100%; height: 7px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+        .pg-subj-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+        .pg-subj-pct {
+            font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 6px; text-align: center;
+        }
+        .pg-subj-count { font-size: 10px; color: var(--text-muted); font-weight: 600; text-align: right; white-space: nowrap; }
+
+        /* PLAYGROUND MODE TOGGLE */
+        .pg-mode-toggle {
+            display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border); background: var(--bg);
+        }
+        .pg-mode-radio { display: none; }
+        .pg-mode-label {
+            padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+            color: var(--text-muted); transition: all 0.2s; text-align: center;
+            border-right: 1px solid var(--border); white-space: nowrap;
+        }
+        .pg-mode-label:last-of-type { border-right: none; }
+        .pg-mode-radio:checked + .pg-mode-label {
+            background: var(--primary); color: white;
+        }
+
+        /* CLASS-WISE MODAL */
+        .pg-classwise-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px); justify-content: center; align-items: center;
+            padding: 16px; z-index: 300;
+        }
+        .pg-cw-card {
+            background: var(--surface); border: 1px solid var(--border);
+            width: 100%; max-width: 420px; border-radius: 16px; padding: 18px;
+            max-height: 85vh; overflow-y: auto; animation: pgSlideIn 0.25s ease-out;
+        }
+        .pg-cw-header {
+            font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 4px;
+        }
+        .pg-cw-subtitle {
+            font-size: 11px; color: var(--text-muted); margin-bottom: 14px;
+        }
+        .pg-cw-slot-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .pg-cw-slot {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 12px; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; transition: border-color 0.2s;
+        }
+        .pg-cw-slot.cw-slot-absent { border-color: rgba(239, 68, 68, 0.35); }
+        .pg-cw-slot-info { flex: 1; min-width: 0; }
+        .pg-cw-slot-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pg-cw-slot-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .pg-cw-slot-time { font-size: 10px; color: var(--gold); font-weight: 700; margin-top: 3px; }
+        .pg-cw-toggle-btn {
+            padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800;
+            cursor: pointer; border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
+            flex-shrink: 0; margin-left: 10px;
+        }
+        .pg-cw-toggle-btn.cw-present {
+            background: rgba(16, 185, 129, 0.2); color: var(--present); border-color: rgba(16, 185, 129, 0.35);
+        }
+        .pg-cw-toggle-btn.cw-absent {
+            background: rgba(239, 68, 68, 0.2); color: var(--absent); border-color: rgba(239, 68, 68, 0.35);
+        }
+        .pg-cw-toggle-btn:hover { transform: scale(1.05); }
+        .pg-cw-actions { display: flex; gap: 8px; }
+        .pg-cw-done-btn {
+            flex: 1; padding: 11px; background: var(--primary); color: white;
+            border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+        .pg-cw-allbtn {
+            padding: 11px 14px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text-muted); border-radius: 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pg-cw-allbtn:hover { border-color: var(--primary); color: var(--text); }
+
+        .pg-cal-date.future-mixed {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+            color: var(--partial); border-color: rgba(245, 158, 11, 0.4); cursor: pointer; font-weight: 800;
+        }
+        .pg-cal-date.future-mixed:hover { transform: scale(1.08); }
+        .pg-cal-date.future-mixed:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- LOGIN VIEW -->
+        <div id="login-view">
+            <h2>CampX Portal</h2>
+            <p class="subtitle">Student Attendance Sign In</p>
+            <input type="email" id="loginId" placeholder="College Email ID" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button class="btn-primary" onclick="loginAndFetch()">Sign In</button>
+            <div id="loading" class="loader">Syncing data...</div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" style="display: none;">
+
+            <div class="top-badge-wrapper">
+                <div class="roll-semicircle-badge" id="disp-roll-badge" onclick="toggleProfileDrawer()" title="Tap to view full profile">
+                    <span id="disp-roll">23701A05B8</span>
+                    <span class="badge-arrow" id="badge-arrow">▾</span>
+                </div>
+                <button class="btn-sync-refresh" id="refresh-btn" onclick="forceSyncRefresh()" title="Sync & Refresh Attendance Data">🔄</button>
+            </div>
+
+            <div class="profile-drawer" id="profile-drawer">
+                <div class="profile-grid">
+                    <div class="prof-item full-width">
+                        <div class="prof-label">Student Name</div>
+                        <div class="prof-val" id="prof-name">MITHRA TEJ VARMA NANDIMANDALAM</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Roll Number</div>
+                        <div class="prof-val" id="prof-roll">23701A05B8</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Branch & Section</div>
+                        <div class="prof-val" id="prof-branch">CSE - Section B</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Semester</div>
+                        <div class="prof-val" id="prof-sem">7</div>
+                    </div>
+                    <div class="prof-item">
+                        <div class="prof-label">Gender</div>
+                        <div class="prof-val" id="prof-gender">MALE</div>
+                    </div>
+                    <div class="prof-item full-width">
+                        <div class="prof-label">College Email</div>
+                        <div class="prof-val" id="prof-email">23701a05b8@aitsrajampet.ac.in</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOLIDAY ANNOUNCEMENT BANNERS -->
+            <div class="holiday-announcement-container">
+                <div class="holiday-announcement-banner" id="today-holiday-banner">
+                    <span id="today-holiday-text">🎉 <strong>Today's Announcement:</strong> Today is a Holiday / No Scheduled Classes!</span>
+                </div>
+                <div class="holiday-announcement-banner" id="tomorrow-holiday-banner">
+                    <span id="tomorrow-holiday-text">🎉 <strong>Tomorrow's Announcement:</strong> Tomorrow is a Holiday / No Scheduled Classes!</span>
+                </div>
+            </div>
+
+            <div class="feature-hint-banner" id="hint-banner">
+                <span>💡 <strong>Quick Tip:</strong> Tap your Roll No for profile, 🔄 to refresh changes, or tap any date for class timings!</span>
+                <button class="hint-close-btn" onclick="dismissHint()">✕</button>
+            </div>
+
+            <!-- 2-STEP FLOATING ARROW < TO EXPANDED 🎮 SEMICIRCLE -->
+            <div class="pg-fab-container" id="pg-fab-container">
+                <!-- Step 1: Collapsed minimal tab showing < arrow (No glow) -->
+                <div class="pg-fab-collapsed" id="pg-fab-collapsed" onclick="expandFabBadge()" title="Open Attendance Playground Tab">
+                    ‹
+                </div>
+                <!-- Step 2: Expanded semicircle badge showing 🎮 icon -->
+                <div class="pg-fab-expanded" id="pg-fab-expanded" onclick="openPlayground()" title="Tap to launch Attendance Playground">
+                    <button class="pg-fab-close" onclick="collapseFabBadge(event)" title="Retract Tab">›</button>
+                    <span class="pg-fab-icon">🎮</span>
+                </div>
+            </div>
+
+            <div class="top-metrics-grid">
+                <div class="metric-card"><div class="metric-label">Final Attd</div><div class="metric-value" id="disp-final" style="color: var(--present);">0%</div></div>
+                <div class="metric-card"><div class="metric-label">Class Avg</div><div class="metric-value" id="disp-avg">0%</div></div>
+                <div class="metric-card"><div class="metric-label">Total</div><div class="metric-value" id="disp-total">0</div></div>
+                <div class="metric-card"><div class="metric-label">Present</div><div class="metric-value" id="disp-present" style="color: var(--present);">0</div></div>
+                <div class="metric-card"><div class="metric-label">Absent</div><div class="metric-value" id="disp-absent" style="color: var(--absent);">0</div></div>
+            </div>
+
+            <div class="dashboard-content-grid">
+                <div class="panel-box">
+                    <div class="panel-header">
+                        <span id="calendar-title">Calendar</span>
+                        <div class="calendar-nav">
+                            <button class="cal-nav-btn" onclick="changeMonth(-1)">←</button>
+                            <button class="cal-nav-btn" onclick="changeMonth(1)">→</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-container"></div>
+                </div>
+
+                <div class="panel-box">
+                    <div class="panel-header">
+                        <span>Subject Breakdown</span>
+                        <span style="font-size: 11px; color: var(--text-muted);" id="disp-sem-badge">Semester 7</span>
+                    </div>
+                    <div class="subject-scroll-area" id="subject-container"></div>
+                </div>
+            </div>
+
+            <div class="signout-container">
+                <button class="btn-signout" onclick="signOut()">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAILY CLASS / TIMETABLE MODAL -->
+    <div class="modal" id="class-modal">
+        <div class="modal-card">
+            <h3 id="modal-date-title" style="font-size: 16px;">Schedule & Attendance Log</h3>
+            <div id="no-record-container"></div>
+            <div class="period-list" id="modal-period-list"></div>
+            <button class="btn-primary" style="margin-top: 14px;" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- ATTENDANCE PLAYGROUND OVERLAY -->
+    <div id="playground-view">
+        <div class="pg-inner">
+            <!-- ACTION MODE GUIDED DEMO BANNER -->
+            <div class="pg-action-guide-banner" id="pg-action-banner" style="display: none;">
+                <div class="pg-action-guide-text" id="pg-action-text">Action Prompt</div>
+                <button class="pg-action-guide-next" id="pg-action-btn" onclick="nextActionStep()">Next Step →</button>
+            </div>
+
+            <div class="pg-header">
+                <div class="pg-header-left">
+                    <button class="pg-back-btn" onclick="closePlayground()">←</button>
+                    <div class="pg-title">🎮 Attendance Playground</div>
+                </div>
+                <button class="pg-info-btn" onclick="startPlaygroundTutorial()" title="Replay Guided Tour">ℹ️ Action Tour</button>
+            </div>
+
+            <div class="pg-hint">
+                Tap future dates to toggle <strong>Present ↔ Absent</strong>.<br>
+                All unmarked future dates count as <strong>Present</strong>. Calculated per class session.
+            </div>
+
+            <div class="pg-results-panel">
+                <div class="pg-result-main">
+                    <div>
+                        <div class="pg-result-label">Projected Attendance</div>
+                        <div class="pg-projected-pct" id="pg-projected-pct">0%</div>
+                    </div>
+                    <div class="pg-status-badge pg-status-safe" id="pg-status-badge">✅ SAFE</div>
+                </div>
+                <div class="pg-progress-bar">
+                    <div class="pg-progress-fill" id="pg-progress-fill"></div>
+                </div>
+                <div class="pg-stats-row">
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">Current %</div>
+                        <div class="pg-stat-value" id="pg-current-pct">0%</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">+Present</div>
+                        <div class="pg-stat-value" id="pg-future-present" style="color: var(--present);">0</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">+Absent</div>
+                        <div class="pg-stat-value" id="pg-future-absent" style="color: var(--absent);">0</div>
+                    </div>
+                    <div class="pg-stat-item">
+                        <div class="pg-stat-label">Sem End</div>
+                        <div class="pg-stat-value" id="pg-sem-end">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pg-danger-msg" id="pg-danger-msg">
+                🚨 <strong>WARNING:</strong> Your attendance will drop below 75%! Do NOT skip these classes.
+            </div>
+
+            <div class="pg-legend">
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--present); opacity: 0.5;"></div>Past P</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--absent); opacity: 0.5;"></div>Past A</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--present);"></div>Future P</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: var(--absent);"></div>Future A</div>
+                <div class="pg-legend-item"><div class="pg-legend-dot" style="background: rgba(255,255,255,0.08);"></div>No Class</div>
+            </div>
+
+            <div class="pg-calendar-panel">
+                <div class="pg-cal-header">
+                    <span class="pg-cal-title" id="pg-cal-title">Calendar</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="pg-mode-toggle">
+                            <input type="radio" name="pgMode" id="pgModeDaywise" class="pg-mode-radio" value="daywise" checked onchange="switchPgMode('daywise')">
+                            <label for="pgModeDaywise" class="pg-mode-label">Day-wise</label>
+                            <input type="radio" name="pgMode" id="pgModeClasswise" class="pg-mode-radio" value="classwise" onchange="switchPgMode('classwise')">
+                            <label for="pgModeClasswise" class="pg-mode-label">Class-wise</label>
+                        </div>
+                        <div class="calendar-nav">
+                            <button class="cal-nav-btn" onclick="changePgMonth(-1)">←</button>
+                            <button class="cal-nav-btn" onclick="changePgMonth(1)">→</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="pg-cal-grid" id="pg-calendar-container"></div>
+            </div>
+
+            <div class="pg-subjects-panel">
+                <div class="pg-subjects-header">
+                    <span>📊 Subject-Wise Projection</span>
+                    <span>Projected P / Total</span>
+                </div>
+                <div class="pg-subject-list" id="pg-subject-container"></div>
+            </div>
+
+            <div class="pg-footer-actions">
+                <button class="pg-reset-btn" onclick="resetPlayground()">🔄 Reset All to Present</button>
+                <button class="pg-reset-btn" onclick="closePlayground()">← Back to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLASS-WISE SELECTION MODAL -->
+    <div class="pg-classwise-modal" id="pg-cw-modal">
+        <div class="pg-cw-card">
+            <div class="pg-cw-header" id="pg-cw-date-title">Select Classes</div>
+            <div class="pg-cw-subtitle">Tap each class to toggle Present ↔ Absent individually</div>
+            <div class="pg-cw-slot-list" id="pg-cw-slot-list"></div>
+            <div class="pg-cw-actions">
+                <button class="pg-cw-allbtn" onclick="cwMarkAll('present')">All Present</button>
+                <button class="pg-cw-allbtn" onclick="cwMarkAll('absent')">All Absent</button>
+                <button class="pg-cw-done-btn" onclick="closeCwModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAMPX REFLECTION CAUTION DISCLAIMER MODAL -->
+    <div class="pg-disclaimer-overlay" id="pg-disclaimer-overlay" style="display: none;">
+        <div class="pg-disclaimer-card">
+            <div class="pg-disclaimer-icon">⚠️</div>
+            <h3>Official CampX Live Sync Disclaimer</h3>
+            <p>
+                This attendance portal and calendar are a <strong>direct live reflection of official CampX college data</strong>.
+                <br><br>
+                Any changes posted on CampX—including official college holidays, rescheduled classes, or faculty attendance postings—will automatically reflect here.
+                <br><br>
+                <strong>Important Recommendation:</strong> Always keep your target attendance at <strong>77% or higher</strong> to maintain a safe buffer against any minor attendance calculation mistakes or posting delays!
+            </p>
+            <button class="btn-primary" onclick="acceptDisclaimer()">I Understand & Accept 🚀</button>
+        </div>
+    </div>
+
+    <script>
+        let cachedCredentials = { loginId: "", password: "" };
+        let dailyClassesCache = {};
+        let monthlyCalendarMap = {};
+        let studentContext = { classroomId: "57", semNo: "7" };
+
+        const now = new Date();
+        let currentCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const API_BASE_URL = "https://attendance-temn.onrender.com";
+        const barColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        // SAFE 12-HOUR TIME CONVERTER
+        function formatTo12Hour(timeStr) {
+            if (!timeStr) return "";
+            const cleanStr = timeStr.trim().substring(0, 5);
+            const parts = cleanStr.split(':');
+            if (parts.length < 2) return cleanStr;
+
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1];
+            if (isNaN(hours)) return cleanStr;
+
+            const period = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            const formattedHours = String(hours).padStart(2, '0');
+            return `${formattedHours}:${minutes} ${period}`;
+        }
+
+        function formatRangeTo12Hour(fromTime, toTime) {
+            if (!fromTime || !toTime) return "";
+            return `${formatTo12Hour(fromTime)} - ${formatTo12Hour(toTime)}`;
+        }
+
+        function formatRawString12Hour(rawRangeStr) {
+            if (!rawRangeStr) return "";
+            if (rawRangeStr.includes("AM") || rawRangeStr.includes("PM")) return rawRangeStr;
+
+            const parts = rawRangeStr.split('-');
+            if (parts.length === 2) {
+                const start12 = formatTo12Hour(parts[0]);
+                const end12 = formatTo12Hour(parts[1]);
+                if (start12 && end12) return `${start12} - ${end12}`;
+            }
+            return rawRangeStr;
+        }
+
+        function setCookie(name, value, days = 14) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${encodeURIComponent(value)}; expires=${date.toUTCString()}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i].trim();
+                if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedEmail = getCookie("campx_loginId") || localStorage.getItem("campx_loginId");
+            const savedPassword = getCookie("campx_password") || localStorage.getItem("campx_password");
+
+            const cachedDashboardData = localStorage.getItem("campx_dashboard_cache");
+            const cachedDailyClasses = localStorage.getItem("campx_daily_cache");
+            const cachedMonthlyMap = localStorage.getItem("campx_monthly_map");
+
+            if (sessionStorage.getItem("hint_dismissed") === "true") {
+                const hint = document.getElementById('hint-banner');
+                if (hint) hint.style.display = "none";
+            }
+
+            if (savedEmail && savedPassword) {
+                cachedCredentials = { loginId: savedEmail, password: savedPassword };
+                document.getElementById('loginId').value = savedEmail;
+                document.getElementById('password').value = savedPassword;
+
+                if (cachedDashboardData) {
+                    try {
+                        const parsedData = JSON.parse(cachedDashboardData);
+                        if (parsedData.dynamicContext) studentContext = parsedData.dynamicContext;
+
+                        if (cachedMonthlyMap) monthlyCalendarMap = JSON.parse(cachedMonthlyMap);
+                        if (cachedDailyClasses) dailyClassesCache = JSON.parse(cachedDailyClasses);
+
+                        // 1. Render Dashboard Instantly from Cache (0ms)
+                        renderDashboard(parsedData);
+                        checkHolidayBannersLocally();
+
+                        // 2. Background Auto-Sync Today's Attendance
+                        autoSyncTodayAttendance();
+
+                    } catch (e) {
+                        loginAndFetch(savedEmail, savedPassword);
+                    }
+                } else {
+                    loginAndFetch(savedEmail, savedPassword);
+                }
+            }
+        });
+
+        // AUTOMATED TODAY'S ATTENDANCE BACKGROUND AUTO-SYNC
+        async function autoSyncTodayAttendance() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const dayStr = String(today.getDate()).padStart(2, '0');
+            const monthStr = String(month).padStart(2, '0');
+            const todayDateStr = `${year}-${monthStr}-${dayStr}`;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/today-sync`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        loginId: cachedCredentials.loginId,
+                        password: cachedCredentials.password,
+                        classroomId: studentContext.classroomId,
+                        semNo: studentContext.semNo,
+                        date: todayDateStr,
+                        month: month,
+                        year: year
+                    })
+                });
+
+                if (!res.ok) return;
+                const syncData = await res.json();
+
+                if (syncData.todayBundle) {
+                    dailyClassesCache[todayDateStr] = syncData.todayBundle;
+                }
+
+                const monthKey = `${year}-${monthStr}`;
+                if (syncData.monthlyCalendar) {
+                    monthlyCalendarMap[monthKey] = syncData.monthlyCalendar;
+                }
+
+                const cachedDashboard = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+                if (syncData.primary) cachedDashboard.primary = syncData.primary;
+                if (syncData.subjectWise) cachedDashboard.subjectWise = syncData.subjectWise;
+                if (syncData.monthlyCalendar) cachedDashboard.monthlyCalendar = syncData.monthlyCalendar;
+
+                localStorage.setItem("campx_dashboard_cache", JSON.stringify(cachedDashboard));
+                localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+
+                renderDashboard(cachedDashboard);
+                checkHolidayBannersLocally();
+
+            } catch (err) {
+                console.log("Background today auto-sync skipped (offline or server sleeping)");
+            }
+        }
+
+        async function loginAndFetch(optLoginId, optPassword) {
+            const loginId = optLoginId || document.getElementById('loginId').value;
+            const password = optPassword || document.getElementById('password').value;
+            if (!loginId || !password) return alert("Please enter credentials");
+
+            cachedCredentials = { loginId, password };
+            document.getElementById('loading').style.display = "block";
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/attendance`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ loginId, password })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    setCookie("campx_loginId", loginId);
+                    setCookie("campx_password", password);
+                    localStorage.setItem("campx_loginId", loginId);
+                    localStorage.setItem("campx_password", password);
+
+                    if (data.dynamicContext) studentContext = data.dynamicContext;
+
+                    const monthKey = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}`;
+                    monthlyCalendarMap[monthKey] = data.monthlyCalendar || {};
+
+                    if (data.dailyBundle) {
+                        Object.assign(dailyClassesCache, data.dailyBundle);
+                    }
+
+                    localStorage.setItem("campx_dashboard_cache", JSON.stringify(data));
+                    localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                    localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+
+                    renderDashboard(data);
+                    checkHolidayBannersLocally();
+                } else {
+                    alert("Auth failed: " + data.detail);
+                    signOut();
+                }
+            } catch (err) {
+                alert("Server connection error. Please check your backend.");
+            } finally {
+                document.getElementById('loading').style.display = "none";
+            }
+        }
+
+        // INDEPENDENT TODAY & TOMORROW HOLIDAY CHECK (0ms Latency)
+        function checkHolidayBannersLocally() {
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+
+            const formatKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+            const todayKey = formatKey(today);
+            const tomorrowKey = formatKey(tomorrow);
+
+            const todayBundle = dailyClassesCache[todayKey];
+            const tomorrowBundle = dailyClassesCache[tomorrowKey];
+
+            const todayBanner = document.getElementById('today-holiday-banner');
+            const tomorrowBanner = document.getElementById('tomorrow-holiday-banner');
+
+            // 1. Check Today
+            if (todayBundle) {
+                const tt = todayBundle.timetable || [];
+                const att = todayBundle.attendance || [];
+                if (tt.length === 0 && att.length === 0) {
+                    document.getElementById('today-holiday-text').innerHTML = `🎉 <strong>Today's Announcement (${todayKey}):</strong> Today is a Holiday / No Scheduled Classes!`;
+                    todayBanner.style.display = 'flex';
+                } else {
+                    todayBanner.style.display = 'none';
+                }
+            } else {
+                todayBanner.style.display = 'none';
+            }
+
+            // 2. Check Tomorrow
+            if (tomorrowBundle) {
+                const tt = tomorrowBundle.timetable || [];
+                const att = tomorrowBundle.attendance || [];
+                if (tt.length === 0 && att.length === 0) {
+                    document.getElementById('tomorrow-holiday-text').innerHTML = `🎉 <strong>Tomorrow's Announcement (${tomorrowKey}):</strong> Tomorrow is a Holiday / No Scheduled Classes!`;
+                    tomorrowBanner.style.display = 'flex';
+                } else {
+                    tomorrowBanner.style.display = 'none';
+                }
+            } else {
+                tomorrowBanner.style.display = 'none';
+            }
+        }
+
+        function renderDashboard(data) {
+            const student = data.primary.student || {};
+            const classroom = data.primary.classroom || {};
+
+            const officialRoll = student.rollNo || "23701A05B8";
+            document.getElementById('disp-roll').textContent = officialRoll;
+            document.getElementById('prof-roll').textContent = officialRoll;
+
+            document.getElementById('prof-name').textContent = (student.fullName || "MITHRA TEJ VARMA NANDIMANDALAM").toUpperCase();
+            document.getElementById('prof-email').textContent = student.email || cachedCredentials.loginId;
+            document.getElementById('prof-gender').textContent = (student.gender || "MALE").toUpperCase();
+            document.getElementById('prof-sem').textContent = student.semNo || studentContext.semNo;
+
+            // CLEAN BRANCH & SECTION DISPLAY ("CSE - Section B")
+            const cleanBranch = student.branchCode || 'CSE';
+            let cleanSection = 'B';
+            if (classroom.name) {
+                cleanSection = classroom.name.replace(/^(CSE|ECE|EEE|MECH|CIVIL)\s*-\s*/i, '').trim();
+            }
+            document.getElementById('prof-branch').textContent = `${cleanBranch} - Section ${cleanSection}`;
+
+            document.getElementById('disp-sem-badge').textContent = `Semester ${studentContext.semNo}`;
+
+            const overallPct = parseFloat(data.subjectWise.overallAttendance || data.primary.attendancePercentage || 0).toFixed(1);
+            const classAvg = parseFloat(data.subjectWise.classAverage || 0).toFixed(1);
+
+            document.getElementById('disp-final').textContent = overallPct + '%';
+            document.getElementById('disp-avg').textContent = classAvg + '%';
+
+            const primStats = data.primary.primaryAttendance || {};
+            document.getElementById('disp-total').textContent = primStats.totalSessionsIncludingActivity || 0;
+            document.getElementById('disp-present').textContent = primStats.present || 0;
+            document.getElementById('disp-absent').textContent = primStats.absent || 0;
+
+            document.getElementById('disp-final').style.color = overallPct >= 75 ? 'var(--present)' : 'var(--absent)';
+
+            renderCalendarGrid();
+
+            const subjContainer = document.getElementById('subject-container');
+            subjContainer.innerHTML = "";
+
+            (data.subjectWise.subjects || []).forEach((sub, idx) => {
+                const row = document.createElement('div');
+                row.className = 'subject-row-strict';
+
+                const color = barColors[idx % barColors.length];
+                const isPassing = sub.percentage >= 75;
+                const badgeBg = isPassing ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                const badgeText = isPassing ? 'var(--present)' : 'var(--absent)';
+
+                row.innerHTML = `
+                    <div class="subj-name-col" title="${sub.subjectName}">${sub.subjectName}</div>
+                    <div class="subj-bar-wrapper">
+                        <div class="subj-bar-fill" style="width: ${sub.percentage}%; background-color: ${color};"></div>
+                    </div>
+                    <div class="subj-pct-badge" style="background: ${badgeBg}; color: ${badgeText};">
+                        ${sub.percentage}%
+                    </div>
+                    <div class="subj-classes-count">
+                        ${sub.present}/${sub.numberOfClasses}
+                    </div>
+                `;
+                subjContainer.appendChild(row);
+            });
+
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+        }
+
+        function toggleProfileDrawer() {
+            const drawer = document.getElementById('profile-drawer');
+            const arrow = document.getElementById('badge-arrow');
+
+            if (drawer.classList.contains('open')) {
+                drawer.classList.remove('open');
+                arrow.classList.remove('rotated');
+            } else {
+                drawer.classList.add('open');
+                arrow.classList.add('rotated');
+            }
+        }
+
+        function dismissHint() {
+            document.getElementById('hint-banner').style.display = 'none';
+            sessionStorage.setItem("hint_dismissed", "true");
+        }
+
+        function renderCalendarGrid() {
+            const calContainer = document.getElementById('calendar-container');
+            calContainer.innerHTML = "";
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year} Calendar`;
+
+            const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            days.forEach(d => calContainer.innerHTML += `<div class="cal-day-name">${d}</div>`);
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDayIndex; i++) calContainer.innerHTML += `<div></div>`;
+
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const monthStatusMap = monthlyCalendarMap[monthKey] || {};
+
+            for (let dateNum = 1; dateNum <= totalDays; dateNum++) {
+                const dayStr = String(dateNum).padStart(2, '0');
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+                const status = monthStatusMap[dateStr];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `cal-date ${status ? 'status-' + status : ''}`;
+                dayEl.textContent = dateNum;
+
+                dayEl.onclick = () => showDailyClassModal(dateStr);
+
+                calContainer.appendChild(dayEl);
+            }
+        }
+
+        async function changeMonth(offset) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth() + 1;
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+            if (!monthlyCalendarMap[monthKey]) {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/month-complete-data`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            loginId: cachedCredentials.loginId,
+                            password: cachedCredentials.password,
+                            month: month,
+                            year: year,
+                            classroomId: studentContext.classroomId,
+                            semNo: studentContext.semNo
+                        })
+                    });
+                    const batchData = await res.json();
+
+                    monthlyCalendarMap[monthKey] = batchData.monthlyCalendar || {};
+                    if (batchData.dailyBundle) {
+                        Object.assign(dailyClassesCache, batchData.dailyBundle);
+                    }
+
+                    localStorage.setItem("campx_monthly_map", JSON.stringify(monthlyCalendarMap));
+                    localStorage.setItem("campx_daily_cache", JSON.stringify(dailyClassesCache));
+                } catch (err) {
+                    console.error("Failed month map sync");
+                }
+            }
+            renderCalendarGrid();
+        }
+
+        function showDailyClassModal(dateStr) {
+            document.getElementById('modal-date-title').textContent = `Classes for ${dateStr}`;
+            document.getElementById('no-record-container').innerHTML = "";
+            document.getElementById('class-modal').style.display = 'flex';
+
+            const payload = dailyClassesCache[dateStr] || { hasRecord: false, data: [] };
+            renderModalPeriods(payload);
+        }
+
+        // ORIGINAL UNBROKEN OVERLAY FUNCTION WITH SHINING GOLD 12-HR BADGES
+        function renderModalPeriods(payload) {
+            const listEl = document.getElementById('modal-period-list');
+            const bannerEl = document.getElementById('no-record-container');
+            listEl.innerHTML = "";
+            bannerEl.innerHTML = "";
+
+            const hasRecord = payload.hasRecord;
+            const timetable = payload.timetable || [];
+            const attendanceLogs = payload.attendance || payload.data || [];
+
+            // 1. MASTER TIMETABLE SLOTS AVAILABLE
+            if (Array.isArray(timetable) && timetable.length > 0) {
+                if (!hasRecord) {
+                    bannerEl.innerHTML = `<div class="no-record-banner">⚠️ Attendance Not Posted Yet — Showing Timetable</div>`;
+                }
+
+                const attMap = {};
+                attendanceLogs.forEach(rec => {
+                    if (rec.subjectId) attMap[rec.subjectId] = rec;
+                    if (rec.subjectName) attMap[rec.subjectName] = rec;
+                });
+
+                timetable.forEach(slot => {
+                    const subjName = slot.subject ? slot.subject.name : (slot.subjectName || "Scheduled Class");
+                    const subjCode = slot.subject ? slot.subject.subjectCode : (slot.subjectCode || "");
+
+                    // FORMAT TIME TO 12-HOUR AM/PM
+                    const rawTimeRange = (slot.fromTime && slot.toTime) ? `${slot.fromTime.substring(0, 5)} - ${slot.toTime.substring(0, 5)}` : "";
+                    const timeRange12 = formatRangeTo12Hour(slot.fromTime, slot.toTime) || formatRawString12Hour(rawTimeRange);
+
+                    const faculty = (slot.faculties && slot.faculties.length > 0) ? slot.faculties[0].fullName : "";
+                    const slotSubjId = slot.subjectId || (slot.subject ? slot.subject.id : null);
+
+                    const matchRecord = attMap[slotSubjId] || attMap[subjName];
+
+                    if (matchRecord) {
+                        const isPresent = matchRecord.isAbsent === 0;
+                        listEl.innerHTML += `
+                            <div class="period-item">
+                                <div>
+                                    <strong style="color: var(--text);">${subjName}</strong>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                        ${subjCode} ${faculty ? '• ' + faculty : ''}
+                                    </div>
+                                    ${timeRange12 ? `<div class="period-time-badge">⏱ ${timeRange12}</div>` : ''}
+                                </div>
+                                <span class="${isPresent ? 'badge-p' : 'badge-a'}">
+                                    ${isPresent ? 'PRESENT' : 'ABSENT'}
+                                </span>
+                            </div>
+                        `;
+                    } else {
+                        listEl.innerHTML += `
+                            <div class="period-item">
+                                <div>
+                                    <strong style="color: var(--text);">${subjName}</strong>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                        ${subjCode} ${faculty ? '• ' + faculty : ''}
+                                    </div>
+                                </div>
+                                <span class="badge-tt">⏱ ${timeRange12 || 'Scheduled'}</span>
+                            </div>
+                        `;
+                    }
+                });
+                return;
+            }
+
+            // 2. RAW ATTENDANCE LOGS FALLBACK
+            if (Array.isArray(attendanceLogs) && attendanceLogs.length > 0) {
+                attendanceLogs.forEach(rec => {
+                    const isPresent = rec.isAbsent === 0;
+                    const subjName = rec.subjectName || (rec.subject ? rec.subject.name : "Class");
+                    const subjCode = rec.subjectCode || rec.refCode || "";
+
+                    let timeStr = "";
+                    if (rec.fromTime && rec.toTime) {
+                        timeStr = formatRangeTo12Hour(rec.fromTime, rec.toTime);
+                    } else if (rec.timeRange) {
+                        timeStr = formatRawString12Hour(rec.timeRange);
+                    }
+
+                    listEl.innerHTML += `
+                        <div class="period-item">
+                            <div>
+                                <strong style="color: var(--text);">${subjName}</strong>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${subjCode}</div>
+                                ${timeStr ? `<div class="period-time-badge">⏱ ${timeStr}</div>` : ''}
+                            </div>
+                            <span class="${isPresent ? 'badge-p' : 'badge-a'}">
+                                ${isPresent ? 'PRESENT' : 'ABSENT'}
+                            </span>
+                        </div>
+                    `;
+                });
+                return;
+            }
+
+            // 3. EMPTY (HOLIDAY / OFF-DAY)
+            listEl.innerHTML = "<div style='color: var(--text-muted); padding: 10px; text-align: center;'>No scheduled classes or records for this day (Holiday/Off-day).</div>";
+        }
+
+        function closeModal() { document.getElementById('class-modal').style.display = 'none'; }
+
+        function forceSyncRefresh() {
+            const btn = document.getElementById('refresh-btn');
+            btn.classList.add('spinning');
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
+            loginAndFetch(cachedCredentials.loginId, cachedCredentials.password);
+            setTimeout(() => { btn.classList.remove('spinning'); }, 600);
+        }
+
+        function signOut() {
+            deleteCookie("campx_loginId");
+            deleteCookie("campx_password");
+            localStorage.clear();
+            sessionStorage.clear();
+            dailyClassesCache = {};
+            monthlyCalendarMap = {};
+            cachedCredentials = { loginId: "", password: "" };
+            document.getElementById('password').value = "";
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('login-view').style.display = 'block';
+        }
+
+        // ===== ATTENDANCE PLAYGROUND — WHAT-IF SIMULATOR =====
+        let playgroundClassToggles = {};  // single source of truth: dateStr -> { slotIndex: 'present'|'absent' }
+        let pgCalendarDate = null;
+        let pgSemesterEndDate = null;
+        let pgMode = 'daywise';  // 'daywise' or 'classwise'
+        let pgCwCurrentDate = null;  // currently open class-wise modal date
+
+        function pgFormatDateKey(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function detectSemesterEndDate() {
+            let lastDate = null;
+            for (const dateStr in dailyClassesCache) {
+                const bundle = dailyClassesCache[dateStr];
+                if (bundle && bundle.timetable && bundle.timetable.length > 0) {
+                    const parts = dateStr.split('-');
+                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    if (!lastDate || d > lastDate) {
+                        lastDate = d;
+                    }
+                }
+            }
+            return lastDate;
+        }
+
+        function getFutureDatesWithClasses() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const futureDates = {};
+            for (const dateStr in dailyClassesCache) {
+                const parts = dateStr.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                if (d > today) {
+                    const bundle = dailyClassesCache[dateStr];
+                    const classCount = (bundle && bundle.timetable) ? bundle.timetable.length : 0;
+                    if (classCount > 0) {
+                        futureDates[dateStr] = classCount;
+                    }
+                }
+            }
+            return futureDates;
+        }
+
+        function expandFabBadge() {
+            document.getElementById('pg-fab-collapsed').style.display = 'none';
+            const exp = document.getElementById('pg-fab-expanded');
+            exp.style.display = 'flex';
+        }
+
+        function collapseFabBadge(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('pg-fab-expanded').style.display = 'none';
+            document.getElementById('pg-fab-collapsed').style.display = 'flex';
+        }
+
+        function openPlayground() {
+            playgroundClassToggles = {};
+            pgMode = 'daywise';
+            document.getElementById('pgModeDaywise').checked = true;
+            pgSemesterEndDate = detectSemesterEndDate();
+
+            const now = new Date();
+            pgCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const dashData = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+            const overallPct = parseFloat(
+                (dashData.subjectWise && dashData.subjectWise.overallAttendance) ||
+                (dashData.primary && dashData.primary.attendancePercentage) || 0
+            ).toFixed(1);
+            document.getElementById('pg-current-pct').textContent = overallPct + '%';
+
+            if (pgSemesterEndDate) {
+                const endDay = pgSemesterEndDate.getDate();
+                const endMon = pgSemesterEndDate.getMonth() + 1;
+                document.getElementById('pg-sem-end').textContent = `${endDay}/${endMon}`;
+            } else {
+                document.getElementById('pg-sem-end').textContent = '—';
+            }
+
+            renderPlaygroundCalendar();
+            recalculateProjection();
+
+            const pgView = document.getElementById('playground-view');
+            pgView.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            if (!localStorage.getItem('pg_tutorial_seen')) {
+                setTimeout(startPlaygroundTutorial, 400);
+            }
+        }
+
+        function closePlayground() {
+            const pgView = document.getElementById('playground-view');
+            pgView.classList.remove('open');
+            document.body.style.overflow = '';
+            document.getElementById('pg-action-banner').style.display = 'none';
+        }
+
+        // ===== ACTION-MODE INTERACTIVE GUIDED TOUR =====
+        let isActionModeTutorial = false;
+        let actionStepIndex = 1;
+
+        const actionStepPrompts = {
+            1: { text: "👉 <b>Action 1:</b> Tap the <b>'Class-wise'</b> or <b>'Day-wise'</b> mode switch above the calendar!", btn: "Skip to Action 2 →" },
+            2: { text: "📅 <b>Action 2:</b> Tap any green future date on the calendar to toggle Present/Absent or customize periods!", btn: "Next Step →" },
+            3: { text: "⚡ <b>Action 3:</b> Watch your projected attendance meter & status badge update live! (🟢≥77% Safe, 🟡75-77% Risky, 🔴<75% Danger)", btn: "View Subject Breakdown →" },
+            4: { text: "📊 <b>Action 4:</b> Scroll down to inspect how individual subject counts are affected in real-time!", btn: "Finish & Read Disclaimer →" }
+        };
+
+        function startPlaygroundTutorial() {
+            isActionModeTutorial = true;
+            actionStepIndex = 1;
+            renderActionStep();
+            document.getElementById('pg-action-banner').style.display = 'flex';
+        }
+
+        function renderActionStep() {
+            const data = actionStepPrompts[actionStepIndex];
+            if (!data) return showCampXDisclaimer();
+            document.getElementById('pg-action-text').innerHTML = data.text;
+            document.getElementById('pg-action-btn').textContent = data.btn;
+        }
+
+        function nextActionStep() {
+            if (actionStepIndex < 4) {
+                actionStepIndex++;
+                renderActionStep();
+            } else {
+                document.getElementById('pg-action-banner').style.display = 'none';
+                showCampXDisclaimer();
+            }
+        }
+
+        function triggerUserActionProgress(completedStep) {
+            if (isActionModeTutorial && actionStepIndex === completedStep) {
+                nextActionStep();
+            }
+        }
+
+        function showCampXDisclaimer() {
+            document.getElementById('pg-action-banner').style.display = 'none';
+            document.getElementById('pg-disclaimer-overlay').style.display = 'flex';
+        }
+
+        function acceptDisclaimer() {
+            document.getElementById('pg-disclaimer-overlay').style.display = 'none';
+            localStorage.setItem('pg_tutorial_seen', 'true');
+            isActionModeTutorial = false;
+        }
+
+        // ===== FLOATING FAB DRAG & TAP LOGIC =====
+        (function initFabDrag() {
+            const fabContainer = document.getElementById('pg-fab-container');
+            if (!fabContainer) return;
+
+            let isDragging = false;
+            let startY = 0;
+            let startTop = 0;
+            let hasMoved = false;
+
+            function onPointerDown(e) {
+                isDragging = true;
+                hasMoved = false;
+                startY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                const rect = fabContainer.getBoundingClientRect();
+                startTop = rect.top + rect.height / 2;
+                fabContainer.style.transition = 'none';
+            }
+
+            function onPointerMove(e) {
+                if (!isDragging) return;
+                const currentY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                const deltaY = currentY - startY;
+
+                if (Math.abs(deltaY) > 5) {
+                    hasMoved = true;
+                    let newTop = startTop + deltaY;
+                    const minTop = 40;
+                    const maxTop = window.innerHeight - 40;
+                    newTop = Math.max(minTop, Math.min(maxTop, newTop));
+                    fabContainer.style.top = newTop + 'px';
+                    fabContainer.style.transform = 'translateY(-50%)';
+                }
+            }
+
+            function onPointerUp(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                fabContainer.style.transition = 'top 0.2s ease';
+            }
+
+            fabContainer.addEventListener('mousedown', onPointerDown);
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+
+            fabContainer.addEventListener('touchstart', onPointerDown, { passive: true });
+            window.addEventListener('touchmove', onPointerMove, { passive: true });
+            window.addEventListener('touchend', onPointerUp);
+        })();
+
+        function renderPlaygroundCalendar() {
+            const container = document.getElementById('pg-calendar-container');
+            container.innerHTML = '';
+
+            const year = pgCalendarDate.getFullYear();
+            const month = pgCalendarDate.getMonth();
+            const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            document.getElementById('pg-cal-title').textContent = `${monthNames[month]} ${year}`;
+
+            const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            dayLabels.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'cal-day-name';
+                el.textContent = d;
+                container.appendChild(el);
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDayIndex; i++) {
+                container.appendChild(document.createElement('div'));
+            }
+
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = pgFormatDateKey(today);
+            const monthStatusMap = monthlyCalendarMap[monthKey] || {};
+
+            for (let dateNum = 1; dateNum <= totalDays; dateNum++) {
+                const dayStr = String(dateNum).padStart(2, '0');
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+                const dateObj = new Date(year, month, dateNum);
+                const isToday = dateStr === todayStr;
+                const isFuture = dateObj > today;
+                const isPast = !isFuture && !isToday;
+
+                const isBeyondSemEnd = pgSemesterEndDate && dateObj > pgSemesterEndDate;
+
+                const bundle = dailyClassesCache[dateStr];
+                const classCount = (bundle && bundle.timetable) ? bundle.timetable.length : 0;
+                const status = monthStatusMap[dateStr];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = 'pg-cal-date';
+
+                if (isPast || isToday) {
+                    if (status === 'present') dayEl.classList.add('past-present');
+                    else if (status === 'absent') dayEl.classList.add('past-absent');
+                    else if (status === 'partial') dayEl.classList.add('past-partial');
+                    if (isToday) dayEl.classList.add('today-marker');
+                } else if (isFuture && !isBeyondSemEnd) {
+                    if (classCount > 0) {
+                        // Always read from playgroundClassToggles (single source of truth)
+                        const slotToggles = playgroundClassToggles[dateStr] || {};
+                        let pCount = 0, aCount = 0;
+                        for (let si = 0; si < classCount; si++) {
+                            if ((slotToggles[si] || 'present') === 'present') pCount++;
+                            else aCount++;
+                        }
+
+                        if (aCount === 0) dayEl.classList.add('future-present');
+                        else if (pCount === 0) dayEl.classList.add('future-absent');
+                        else dayEl.classList.add('future-mixed');
+
+                        if (pgMode === 'daywise') {
+                            dayEl.onclick = () => toggleFutureDate(dateStr);
+                        } else {
+                            dayEl.onclick = () => openCwModal(dateStr);
+                        }
+                    } else {
+                        dayEl.classList.add('no-classes');
+                    }
+                } else {
+                    dayEl.classList.add('no-classes');
+                }
+
+                let innerHtml = `<span>${dateNum}</span>`;
+                if (isFuture && classCount > 0 && !isBeyondSemEnd) {
+                    const slotToggles = playgroundClassToggles[dateStr] || {};
+                    let aCount = 0;
+                    for (let si = 0; si < classCount; si++) {
+                        if ((slotToggles[si] || 'present') === 'absent') aCount++;
+                    }
+                    if (aCount > 0) {
+                        innerHtml += `<span class="pg-class-count">${aCount}/${classCount}</span>`;
+                    } else {
+                        innerHtml += `<span class="pg-class-count">${classCount}cls</span>`;
+                    }
+                }
+                dayEl.innerHTML = innerHtml;
+                container.appendChild(dayEl);
+            }
+        }
+
+        function toggleFutureDate(dateStr) {
+            // Day-wise: toggle ALL slots for this date together
+            const bundle = dailyClassesCache[dateStr];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+            if (timetable.length === 0) return;
+
+            const currentSlots = playgroundClassToggles[dateStr] || {};
+            // Check if any slot is currently absent
+            let anyAbsent = false;
+            for (let i = 0; i < timetable.length; i++) {
+                if ((currentSlots[i] || 'present') === 'absent') { anyAbsent = true; break; }
+            }
+            // If any are absent, set all to present. Otherwise set all to absent.
+            const newStatus = anyAbsent ? 'present' : 'absent';
+            playgroundClassToggles[dateStr] = {};
+            timetable.forEach((_, idx) => {
+                playgroundClassToggles[dateStr][idx] = newStatus;
+            });
+
+            renderPlaygroundCalendar();
+            recalculateProjection();
+            triggerUserActionProgress(2);
+        }
+
+        function recalculateProjection() {
+            const dashData = JSON.parse(localStorage.getItem("campx_dashboard_cache") || "{}");
+            const primStats = (dashData.primary && dashData.primary.primaryAttendance) ? dashData.primary.primaryAttendance : {};
+            const subjects = (dashData.subjectWise && dashData.subjectWise.subjects) ? dashData.subjectWise.subjects : [];
+
+            const currentPresent = parseInt(primStats.present || 0);
+            const currentTotal = parseInt(primStats.totalSessionsIncludingActivity || 0);
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Build per-subject future counters
+            const subjFuture = {}; // keyed by subjectName → { present: 0, absent: 0 }
+            subjects.forEach(sub => {
+                subjFuture[sub.subjectName] = { present: 0, absent: 0 };
+            });
+
+            let futurePresent = 0;
+            let futureAbsent = 0;
+
+            for (const dateStr in dailyClassesCache) {
+                const parts = dateStr.split('-');
+                const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                if (dateObj <= today) continue;
+                if (pgSemesterEndDate && dateObj > pgSemesterEndDate) continue;
+
+                const bundle = dailyClassesCache[dateStr];
+                const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+                if (timetable.length === 0) continue;
+
+                // Count each timetable slot and attribute to its subject
+                timetable.forEach((slot, slotIdx) => {
+                    const slotSubjName = slot.subject ? slot.subject.name : (slot.subjectName || null);
+
+                    // Always read from playgroundClassToggles (single source of truth)
+                    const dateSlots = playgroundClassToggles[dateStr] || {};
+                    const slotToggle = dateSlots[slotIdx] || 'present';
+
+                    if (slotToggle === 'present') {
+                        futurePresent++;
+                        if (slotSubjName && subjFuture[slotSubjName]) {
+                            subjFuture[slotSubjName].present++;
+                        }
+                    } else {
+                        futureAbsent++;
+                        if (slotSubjName && subjFuture[slotSubjName]) {
+                            subjFuture[slotSubjName].absent++;
+                        }
+                    }
+                });
+            }
+
+            const projectedPresent = currentPresent + futurePresent;
+            const projectedTotal = currentTotal + futurePresent + futureAbsent;
+            const projectedPct = projectedTotal > 0 ? (projectedPresent / projectedTotal * 100) : 0;
+            const pctDisplay = projectedPct.toFixed(1);
+
+            // Update overall UI
+            const pctEl = document.getElementById('pg-projected-pct');
+            const badgeEl = document.getElementById('pg-status-badge');
+            const fillEl = document.getElementById('pg-progress-fill');
+            const dangerMsg = document.getElementById('pg-danger-msg');
+
+            pctEl.textContent = pctDisplay + '%';
+            fillEl.style.width = Math.min(projectedPct, 100) + '%';
+
+            if (projectedPct >= 77) {
+                pctEl.style.color = 'var(--present)';
+                badgeEl.className = 'pg-status-badge pg-status-safe';
+                badgeEl.textContent = '✅ SAFE';
+                fillEl.style.background = 'var(--present)';
+                dangerMsg.style.display = 'none';
+            } else if (projectedPct >= 75) {
+                pctEl.style.color = 'var(--partial)';
+                badgeEl.className = 'pg-status-badge pg-status-risky';
+                badgeEl.textContent = '⚠️ RISKY ZONE';
+                fillEl.style.background = 'var(--partial)';
+                dangerMsg.style.display = 'block';
+                dangerMsg.innerHTML = '⚠️ <strong>CAUTION:</strong> You\'re in the 75-77% risky zone. Any attendance miscalculation or mistake could push you below 75%. Avoid skipping more classes.';
+                dangerMsg.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                dangerMsg.style.background = 'rgba(245, 158, 11, 0.1)';
+                dangerMsg.style.color = 'var(--partial)';
+            } else {
+                pctEl.style.color = 'var(--absent)';
+                badgeEl.className = 'pg-status-badge pg-status-danger';
+                badgeEl.textContent = '🚨 DANGER';
+                fillEl.style.background = 'var(--absent)';
+                dangerMsg.style.display = 'block';
+                dangerMsg.innerHTML = '🚨 <strong>WARNING:</strong> Your attendance WILL drop below 75%! Do NOT absent for these days. Attend all remaining classes to stay safe.';
+                dangerMsg.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                dangerMsg.style.background = 'rgba(239, 68, 68, 0.1)';
+                dangerMsg.style.color = 'var(--absent)';
+            }
+
+            document.getElementById('pg-future-present').textContent = futurePresent;
+            document.getElementById('pg-future-absent').textContent = futureAbsent;
+
+            // Render per-subject projection breakdown
+            renderSubjectProjection(subjects, subjFuture);
+        }
+
+        function renderSubjectProjection(subjects, subjFuture) {
+            const container = document.getElementById('pg-subject-container');
+            container.innerHTML = '';
+
+            const subjBarColors = ['#3b82f6', '#10b981', '#f97316', '#ec4899', '#eab308', '#ef4444', '#8b5cf6'];
+
+            subjects.forEach((sub, idx) => {
+                const sf = subjFuture[sub.subjectName] || { present: 0, absent: 0 };
+
+                const curPresent = parseInt(sub.present || 0);
+                const curTotal = parseInt(sub.numberOfClasses || 0);
+
+                const projPresent = curPresent + sf.present;
+                const projTotal = curTotal + sf.present + sf.absent;
+                const projPct = projTotal > 0 ? (projPresent / projTotal * 100) : 0;
+                const pctRound = projPct.toFixed(1);
+
+                const isSafe = projPct >= 77;
+                const isRisky = projPct >= 75 && projPct < 77;
+                const isDanger = projPct < 75;
+
+                const badgeBg = isDanger ? 'rgba(239, 68, 68, 0.2)' : (isRisky ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)');
+                const badgeColor = isDanger ? 'var(--absent)' : (isRisky ? 'var(--partial)' : 'var(--present)');
+                const barColor = subjBarColors[idx % subjBarColors.length];
+
+                const row = document.createElement('div');
+                row.className = 'pg-subject-row' + (isDanger ? ' pg-subj-danger' : (isRisky ? ' pg-subj-risky' : ''));
+
+                row.innerHTML = `
+                    <div class="pg-subj-name" title="${sub.subjectName}">${sub.subjectName}</div>
+                    <div class="pg-subj-bar-wrap">
+                        <div class="pg-subj-bar-fill" style="width: ${Math.min(projPct, 100)}%; background: ${barColor};"></div>
+                    </div>
+                    <div class="pg-subj-pct" style="background: ${badgeBg}; color: ${badgeColor};">
+                        ${pctRound}%
+                    </div>
+                    <div class="pg-subj-count">
+                        ${projPresent}/${projTotal}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function changePgMonth(offset) {
+            pgCalendarDate.setMonth(pgCalendarDate.getMonth() + offset);
+            renderPlaygroundCalendar();
+        }
+
+        function resetPlayground() {
+            playgroundClassToggles = {};
+            renderPlaygroundCalendar();
+            recalculateProjection();
+        }
+
+        function switchPgMode(mode) {
+            pgMode = mode;
+            renderPlaygroundCalendar();
+            recalculateProjection();
+            triggerUserActionProgress(1);
+        }
+
+        // ===== CLASS-WISE MODAL =====
+        function openCwModal(dateStr) {
+            pgCwCurrentDate = dateStr;
+            const bundle = dailyClassesCache[dateStr];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+
+            document.getElementById('pg-cw-date-title').textContent = `Classes for ${dateStr}`;
+            const listEl = document.getElementById('pg-cw-slot-list');
+            listEl.innerHTML = '';
+
+            if (!playgroundClassToggles[dateStr]) {
+                playgroundClassToggles[dateStr] = {};
+            }
+            const dateSlots = playgroundClassToggles[dateStr];
+
+            timetable.forEach((slot, idx) => {
+                const subjName = slot.subject ? slot.subject.name : (slot.subjectName || 'Scheduled Class');
+                const subjCode = slot.subject ? slot.subject.subjectCode : (slot.subjectCode || '');
+                const faculty = (slot.faculties && slot.faculties.length > 0) ? slot.faculties[0].fullName : '';
+                const timeRange = formatRangeTo12Hour(slot.fromTime, slot.toTime);
+
+                const slotStatus = dateSlots[idx] || 'present';
+                const isAbsent = slotStatus === 'absent';
+
+                const slotEl = document.createElement('div');
+                slotEl.className = 'pg-cw-slot' + (isAbsent ? ' cw-slot-absent' : '');
+                slotEl.id = `pg-cw-slot-${idx}`;
+
+                slotEl.innerHTML = `
+                    <div class="pg-cw-slot-info">
+                        <div class="pg-cw-slot-name">${subjName}</div>
+                        <div class="pg-cw-slot-meta">${subjCode}${faculty ? ' \u2022 ' + faculty : ''}</div>
+                        ${timeRange ? '<div class="pg-cw-slot-time">\u23f1 ' + timeRange + '</div>' : ''}
+                    </div>
+                    <button class="pg-cw-toggle-btn ${isAbsent ? 'cw-absent' : 'cw-present'}" onclick="toggleCwSlot(${idx})">
+                        ${isAbsent ? 'ABSENT' : 'PRESENT'}
+                    </button>
+                `;
+                listEl.appendChild(slotEl);
+            });
+
+            document.getElementById('pg-cw-modal').style.display = 'flex';
+            triggerUserActionProgress(2);
+        }
+
+        function toggleCwSlot(slotIdx) {
+            if (!pgCwCurrentDate) return;
+            if (!playgroundClassToggles[pgCwCurrentDate]) {
+                playgroundClassToggles[pgCwCurrentDate] = {};
+            }
+            const current = playgroundClassToggles[pgCwCurrentDate][slotIdx] || 'present';
+            playgroundClassToggles[pgCwCurrentDate][slotIdx] = (current === 'present') ? 'absent' : 'present';
+
+            // Re-render just this slot in the modal
+            openCwModal(pgCwCurrentDate);
+            recalculateProjection();
+            renderPlaygroundCalendar();
+        }
+
+        function cwMarkAll(status) {
+            if (!pgCwCurrentDate) return;
+            const bundle = dailyClassesCache[pgCwCurrentDate];
+            const timetable = (bundle && bundle.timetable) ? bundle.timetable : [];
+            if (!playgroundClassToggles[pgCwCurrentDate]) {
+                playgroundClassToggles[pgCwCurrentDate] = {};
+            }
+            timetable.forEach((_, idx) => {
+                playgroundClassToggles[pgCwCurrentDate][idx] = status;
+            });
+            openCwModal(pgCwCurrentDate);
+            recalculateProjection();
+            renderPlaygroundCalendar();
+        }
+
+        function closeCwModal() {
+            document.getElementById('pg-cw-modal').style.display = 'none';
+            pgCwCurrentDate = null;
+        }
+    </script>
+</body>
+</html>

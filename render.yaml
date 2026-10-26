@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: attendance-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health/ready
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://attendance.varmalabs.tech
+      - key: SUPABASE_URL
+        value: https://sknfnvupcgoarfzrfwvl.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CAMPX_ENCRYPTION_KEY
+        sync: false
+      - key: FIREBASE_USAGE_ENABLED
+        value: "false"
+      - key: FIREBASE_PROJECT_ID
+        value: attendance-90c12
+      - key: CACHE_TTL_SECONDS
+        value: "60"
+      - key: NOTIFICATIONS_ENABLED
+        value: "false"
