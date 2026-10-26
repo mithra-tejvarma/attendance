@@ -388,6 +388,49 @@ body::before {
   padding: 4px;
 }
 @media (max-width: 680px) {
+  /* Diffuse scrolling content behind mobile controls without washing out text.
+     Keep the standard filter last so the production minifier retains it. */
+  :root {
+    --surface: rgba(255, 255, 255, 0.92);
+    --card-gradient: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.96),
+      rgba(238, 242, 255, 0.93)
+    );
+  }
+  :root[data-theme="dark"] {
+    --surface: rgba(22, 31, 50, 0.94);
+    --card-gradient: linear-gradient(
+      120deg,
+      rgba(17, 24, 39, 0.96),
+      rgba(25, 33, 58, 0.94)
+    );
+  }
+  .glass {
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%);
+  }
+  .mobile-nav {
+    background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(125%);
+    backdrop-filter: blur(20px) saturate(125%);
+  }
+  .floating-control,
+  .floating-control:hover {
+    background: color-mix(in srgb, var(--surface-solid) 90%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+    backdrop-filter: blur(16px) saturate(125%);
+  }
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .glass,
+    .mobile-nav,
+    .floating-control,
+    .floating-control:hover {
+      background: var(--surface-solid);
+    }
+  }
   .today-card .timeline-row {
     display: grid;
     grid-template-columns: 82px minmax(0, 1fr);
@@ -456,7 +499,12 @@ body::before {
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass {
+  .glass,
+  .mobile-nav,
+  .floating-control,
+  .floating-control:hover {
     background: var(--surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
