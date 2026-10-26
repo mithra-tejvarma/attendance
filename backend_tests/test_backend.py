@@ -286,12 +286,16 @@ def test_missing_student_context_has_no_default_classroom(setup):
     assert len(fake.calls) == 2
 
 
-def test_upstream_session_rejection_revokes_application_session(setup):
+def test_upstream_session_rejection_keeps_saved_app_session(setup):
     client, fake, _, _ = setup
     _, headers = sign_in(client)
     fake.responses[PRIMARY] = lambda _: httpx.Response(401, json={"private": "PRIVATE"})
-    assert client.post("/api/refresh", headers=headers).status_code == 401
-    assert client.get("/api/me/dashboard", headers=headers).status_code == 401
+    response = client.post("/api/refresh", headers=headers)
+    assert response.status_code == 428
+    assert response.json()["code"] == "campx_reconnect"
+    snapshot = client.get("/api/me/dashboard", headers=headers)
+    assert snapshot.status_code == 200
+    assert snapshot.json()["campxReconnectRequired"] is True
 
 
 def test_identity_change_is_rejected(setup):
@@ -566,6 +570,7 @@ def test_readiness_reports_development_storage_explicitly(setup):
     assert result.json() == {
         "status": "ok",
         "storage": "development-memory",
+        "sessionTtlSeconds": 0,
         "usage": "disabled",
     }
 
