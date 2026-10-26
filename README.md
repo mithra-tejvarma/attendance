@@ -34,7 +34,7 @@ The existing domain currently serves a static site with GitHub Pages headers. Th
 
 1. Set repository Settings → Pages → Source to **GitHub Actions**.
 2. Keep the Pages custom domain set to `attendance.varmalabs.tech`.
-3. Review and run the manual **Publish React frontend to GitHub Pages** workflow. It publishes `dist`, not source files. The custom domain is also copied into `dist/CNAME`.
+3. Review and merge the feature changes into `main` so the Pages workflow exists on the default branch; GitHub requires that for manual dispatch. Then run **Publish React frontend to GitHub Pages** from `main`. It publishes `dist`, not source files. The custom domain is also copied into `dist/CNAME`.
 
 The workflow intentionally has no push trigger. Implementation does not publish the live site.
 
@@ -96,3 +96,5 @@ Each subject shows five recent result boxes, newest first, with an expandable li
 Today, Calendar and Playground consistently format valid times in 12-hour AM/PM form. Faculty names display in the day view as well as details; legacy raw faculty arrays and exact record/timetable links are supported without trusting an unverified embedded attendance flag. The existing palette is brighter while retaining accessible light/dark semantic colors.
 
 See [deploy-from-lab.md](docs/deploy-from-lab.md) for frontend-only development with Render, and [database-choice.md](docs/database-choice.md) for the Supabase/Firestore comparison and capacity tradeoffs.
+
+The final tour step includes a prominent CampX source notice: posted changes appear after refresh, while offline attendance and pending corrections must be tracked personally and updated through faculty/college. For a deployed Render service with missing variables, follow [the exact environment setup steps](docs/render-environment-setup.md). The manual Pages build accepts the public repository variable `VITE_API_BASE_URL` when targeting another backend hostname.

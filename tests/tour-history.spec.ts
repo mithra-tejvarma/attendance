@@ -299,6 +299,24 @@ test.describe("first-login guided tour", () => {
           }),
         ).toBe(true);
       }
+      const note = page.getByRole("complementary", {
+        name: "Your attendance comes from CampX",
+      });
+      await expect(note).toBeVisible();
+      await expect(note).toContainText(
+        "Keep your own record of offline attendance and pending corrections",
+      );
+      await expect(note).toContainText(
+        "This app cannot add or correct official attendance",
+      );
+      const lastScan = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      expect(lastScan.violations).toEqual([]);
+      await page.screenshot({
+        path: `/tmp/attendance-tour-final-${mobile ? "mobile" : "desktop"}.png`,
+        fullPage: false,
+      });
       await page
         .getByRole("button", { name: "Open settings", exact: true })
         .click();

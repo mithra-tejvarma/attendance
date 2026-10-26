@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, Hand, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Hand, Sparkles, Info, X } from "lucide-react";
 type Page = "overview" | "subjects" | "calendar" | "playground";
 export const TOUR_KEY = "vl-tour-v1";
 export function tourSeen() {
@@ -254,7 +254,11 @@ export function GuidedTour({
         role="dialog"
         aria-modal="false"
         aria-labelledby="tour-title"
-        aria-describedby="tour-body"
+        aria-describedby={
+          index === steps.length - 1
+            ? "tour-body tour-attendance-note"
+            : "tour-body"
+        }
         className="tour-panel"
         style={{ top, left, width }}
       >
@@ -275,6 +279,32 @@ export function GuidedTour({
         </span>
         <h2 id="tour-title">{current.title}</h2>
         <p id="tour-body">{current.body}</p>
+        {index === steps.length - 1 && (
+          <aside
+            id="tour-attendance-note"
+            className="tour-attendance-note"
+            aria-labelledby="tour-note-title"
+          >
+            <div>
+              <Info size={21} aria-hidden="true" />
+              <h3 id="tour-note-title">Your attendance comes from CampX</h3>
+            </div>
+            <p>
+              Changes posted in CampX appear here when you refresh. Updates may
+              take a little time to show.
+            </p>
+            <p>
+              <strong>
+                Keep your own record of offline attendance and pending
+                corrections that are not yet shown in CampX.
+              </strong>
+            </p>
+            <p>
+              Ask your faculty or college to update the official CampX record.
+              This app cannot add or correct official attendance.
+            </p>
+          </aside>
+        )}
         <div className="tour-dots" aria-hidden="true">
           {steps.map((_, i) => (
             <i key={i} className={i === index ? "active" : ""} />

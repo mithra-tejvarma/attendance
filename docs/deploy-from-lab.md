@@ -2,6 +2,8 @@
 
 You do not need to run Python or a backend server on your lab computer. Run/build the frontend there and connect it to the deployed Render API. As checked on 25 October 2026, `attendance.varmalabs.tech` still serves the legacy HTML and the existing Render API returns 404 for `/health/ready`. Pushing the feature branch does not deploy either service.
 
+For the exact current Render variable values, private import-file instructions and staged checks, follow [render-environment-setup.md](render-environment-setup.md). The latest check on 26 October found the new API running with development-memory storage; environment setup is the next step.
+
 ## Deploy the new backend first
 
 1. In Render, open the existing attendance service and set its repository branch to `feature/react-attendance-pwa` (or merge the reviewed changes into its deployment branch).
@@ -45,7 +47,7 @@ The browser supports the legacy faculty array and safely links legacy embedded t
 ## Publish the React website
 
 1. In GitHub repository Settings → Pages, choose **GitHub Actions**, keeping `attendance.varmalabs.tech` as the custom domain.
-2. Run **Publish React frontend to GitHub Pages** from the reviewed branch. It builds/publishes `dist`; publishing the raw repository root would continue serving the wrong files.
+2. The default `main` branch currently has no Pages workflow. Review and merge `feature/react-attendance-pwa` into `main` before trying manual dispatch: GitHub requires the workflow file on its default branch. Then run **Publish React frontend to GitHub Pages** from `main`. It builds/publishes `dist`; publishing the raw repository root would continue serving the wrong files.
 3. Verify the custom domain now loads hashed `/assets/` files, log in with an authorized account, and complete the guided tour. Users can skip it or restart it under Settings → Show me around.
 
 ## Activate scheduled notifications
