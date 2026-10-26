@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { signIn } from "./helpers";
 import { fixtureDashboard } from "./fixtures";
-import { subjectHistory } from "../src/subjectHistory";
+import { subjectHistory } from "../src/subjectHistoryModel";
 import {
   formatClassTime,
   formatClassRange,

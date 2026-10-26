@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Check, X, ChevronDown, LoaderCircle, Plus } from "lucide-react";
 import { formatClassRange, facultyLabel } from "./schedule";
-import { historyDate, historyTone, type HistoryClass } from "./subjectHistory";
+import {
+  historyDate,
+  historyTone,
+  type HistoryClass,
+} from "./subjectHistoryModel";
 export function SubjectHistory({
   name,
   rows,

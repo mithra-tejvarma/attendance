@@ -1,5 +1,5 @@
 import { GuidedTour, tourSeen, markTourSeen } from "./GuidedTour";
-import { subjectHistory } from "./subjectHistory";
+import { subjectHistory } from "./subjectHistoryModel";
 import { forgetPushToken } from "./push";
 import { CornerControls, CornerSettings } from "./CornerControls";
 import { Playground, initialPlanEnd } from "./Playground";

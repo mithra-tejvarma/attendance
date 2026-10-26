@@ -1,5 +1,5 @@
 import { SubjectHistory } from "./SubjectHistory";
-import { subjectHistory } from "./subjectHistory";
+import { subjectHistory } from "./subjectHistoryModel";
 import { NotificationSettings } from "./NotificationSettings";
 import {
   attendanceFor,
